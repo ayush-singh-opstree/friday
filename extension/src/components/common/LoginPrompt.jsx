@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SignIn } from '@phosphor-icons/react'
+import { SignIn } from '@/components/icons'
 import { useAuthState } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'

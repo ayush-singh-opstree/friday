@@ -9,8 +9,9 @@ export function Card({ className, interactive = false, as: Tag = 'div', children
   return (
     <Tag
       className={cn(
-        'rounded-md border border-line bg-card p-4 shadow-sm transition-shadow duration-150',
-        interactive && 'cursor-pointer hover:shadow-md',
+        'rounded-xl border border-line bg-card p-4 shadow-sm transition-all duration-200',
+        interactive &&
+          'cursor-pointer hover:shadow-md hover:border-line hover:-translate-y-0.5',
         className,
       )}
       {...props}
@@ -25,7 +26,7 @@ export function Card({ className, interactive = false, as: Tag = 'div', children
  */
 export function SectionHeader({ label, action = null, className }) {
   return (
-    <div className={cn('flex items-center justify-between gap-3 pb-2', className)}>
+    <div className={cn('flex items-center justify-between gap-3 pb-2.5', className)}>
       <h2 className="text-tiny font-semibold tracking-[0.08em] text-ink-subtle uppercase">
         {label}
       </h2>

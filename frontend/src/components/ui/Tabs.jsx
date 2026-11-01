@@ -10,7 +10,12 @@ export const Tabs = TabsPrimitive.Root
 export function TabsList({ className, children, ...props }) {
   return (
     <TabsPrimitive.List
-      className={cn('inline-flex w-full items-center gap-1 rounded-md bg-overlay p-1 text-small', className)}
+      className={cn(
+        // Phones: natural-width triggers that scroll horizontally if they don't
+        // fit (keeps every label readable). sm+: equal-width segmented control.
+        'scrollbar-none flex w-full items-center gap-1 overflow-x-auto rounded-md bg-overlay p-1 text-small',
+        className,
+      )}
       {...props}
     >
       {children}
@@ -22,7 +27,8 @@ export function TabsTrigger({ className, children, ...props }) {
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        'inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 font-medium whitespace-nowrap text-ink-muted transition-colors',
+        'inline-flex flex-none items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 font-medium whitespace-nowrap text-ink-muted transition-colors',
+        'sm:flex-1',
         'hover:text-ink data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm',
         className,
       )}

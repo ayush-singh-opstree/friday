@@ -21,6 +21,7 @@ export const APP = Object.freeze({
 export const OPTIONS_SECTIONS = Object.freeze([
   { key: 'account', label: 'Account', icon: 'UserCircle' },
   { key: 'connection', label: 'Connection', icon: 'PlugsConnected' },
+  { key: 'appearance', label: 'Appearance', icon: 'PaintBrush' },
   { key: 'detection', label: 'Detection', icon: 'Crosshair' },
   { key: 'notifications', label: 'Notifications', icon: 'Bell' },
   { key: 'privacy', label: 'Privacy', icon: 'ShieldCheck' },

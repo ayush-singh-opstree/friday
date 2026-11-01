@@ -1,15 +1,13 @@
 import { create } from 'zustand'
-import { uid } from '@/lib/utils'
+import { toast } from 'sonner'
 
 /**
  * uiStore - transient UI state shared by every extension surface:
- * active view, toast queue, theme preference and loading indicators.
+ * active view, notification toasts, quick capture and loading indicators.
  */
 export const useUiStore = create((set, get) => ({
   /** Active view key per surface, e.g. { popup: 'today', sidepanel: 'context' }. */
   views: {},
-  /** @type {Array<{ id: string, tone: 'info'|'success'|'warning'|'danger', message: string }>} */
-  toasts: [],
   /** @type {{ open: boolean, threadId: string | null }} */
   quickCapture: { open: false, threadId: null },
   /** @type {string | null} */
@@ -25,18 +23,17 @@ export const useUiStore = create((set, get) => ({
   },
 
   /**
+   * Push a notification through **sonner** (mounted by `<ToastViewport />`).
    * @param {string} message
    * @param {'info'|'success'|'warning'|'danger'} [tone]
    */
   pushToast(message, tone = 'info') {
-    const id = uid('toast')
-    set((state) => ({ toasts: [...state.toasts, { id, message, tone }] }))
-    setTimeout(() => get().dismissToast(id), 4200)
-    return id
-  },
-
-  dismissToast(id) {
-    set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) }))
+    const options = { duration: tone === 'danger' ? 6000 : 4200 }
+    if (tone === 'success') toast.success(message, options)
+    else if (tone === 'danger') toast.error(message, options)
+    else if (tone === 'warning') toast.warning(message, options)
+    else toast(message, options)
+    return message
   },
 
   /** @param {boolean} open @param {string | null} [threadId] */

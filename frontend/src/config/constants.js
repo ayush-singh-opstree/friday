@@ -116,6 +116,11 @@ export const DEFAULT_SETTINGS = Object.freeze({
   doNotDisturb: false,
   pushEnabled: false,
   keyboardShortcutsEnabled: true,
+  /**
+   * Sidebar preference: 'auto' (narrow icon rail on laptops/tablets, labelled on
+   * desktop) | 'expanded' | 'collapsed'. Persisted so the choice is remembered.
+   */
+  sidebar: 'auto',
   notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
 })
 

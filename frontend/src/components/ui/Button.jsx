@@ -8,18 +8,21 @@ import { Spinner } from './Feedback'
  * Sizes:    sm (32px) | md (40px) | lg (48px) | icon
  */
 const VARIANTS = {
-  primary: 'bg-primary text-ink-inverse hover:bg-primary-dark',
-  secondary: 'bg-primary-light text-primary hover:brightness-[0.97]',
-  ghost: 'bg-transparent text-primary hover:bg-primary-light',
-  outline: 'border border-line bg-card text-ink hover:border-primary/50',
-  danger: 'bg-danger text-ink-inverse hover:brightness-95',
+  primary:
+    'bg-primary text-ink-inverse hover:bg-primary-dark active:scale-[0.97] shadow-sm hover:shadow-md',
+  secondary: 'bg-primary-light text-primary hover:brightness-[0.96] active:scale-[0.97]',
+  ghost: 'bg-transparent text-primary hover:bg-primary-light active:scale-[0.97]',
+  outline:
+    'border border-line bg-card text-ink hover:border-primary/50 hover:bg-overlay active:scale-[0.97]',
+  danger:
+    'bg-danger text-ink-inverse hover:brightness-95 active:scale-[0.97] shadow-sm hover:shadow-md',
 }
 
 const SIZES = {
-  sm: 'h-8 px-3 text-small',
-  md: 'h-10 px-4 text-body-medium',
-  lg: 'h-12 px-5 text-body-medium',
-  icon: 'h-9 w-9 p-0',
+  sm: 'h-8 px-3.5 text-small rounded-lg',
+  md: 'h-10 px-4 text-body-medium rounded-lg',
+  lg: 'h-12 px-5 text-body-medium rounded-xl',
+  icon: 'h-9 w-9 p-0 rounded-lg',
 }
 
 export const Button = forwardRef(function Button(
@@ -32,8 +35,9 @@ export const Button = forwardRef(function Button(
       type="button"
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-sm font-medium whitespace-nowrap',
-        'transition-colors duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap',
+        'transition-all duration-150 ease-out',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         VARIANTS[variant] ?? VARIANTS.primary,
         SIZES[size] ?? SIZES.md,
         className,
@@ -54,10 +58,15 @@ export const IconButton = forwardRef(function IconButton(
   return (
     <Button
       ref={ref}
+      variant="outline"
       size="icon"
       aria-label={label}
       title={label}
-      className={cn(size === 'sm' && 'h-8 w-8', className)}
+      className={cn(
+        'border-transparent bg-transparent text-ink-muted hover:bg-overlay hover:text-ink hover:border-transparent shadow-none',
+        size === 'sm' && 'h-8 w-8',
+        className,
+      )}
       {...props}
     >
       {children}

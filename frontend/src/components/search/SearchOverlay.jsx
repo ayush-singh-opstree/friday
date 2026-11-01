@@ -8,7 +8,7 @@ import {
   NoteBlank,
   Users,
   X,
-} from '@phosphor-icons/react'
+} from '@/components/icons'
 import { STORAGE_KEYS } from '@/config/constants'
 import { useSearch } from '@/hooks/useSearch'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -16,10 +16,11 @@ import { HighlightedText } from '@/components/common/HighlightedText'
 import { CaptureTypeChip } from '@/components/ui/Chip'
 import { UrgencyDot } from '@/components/ui/Badge'
 import { EmptyState, LoadingState } from '@/components/ui/Feedback'
+import { FilterPills } from '@/components/ui'
 import { readJson, writeJson } from '@/lib/localStore'
 import { humaniseDueDate } from '@/lib/date'
-import { cn } from '@/lib/utils'
 import { useUiStore } from '@/store'
+import { motion } from 'motion/react'
 
 const TYPE_FILTERS = [
   { value: 'all', label: 'All' },
@@ -33,9 +34,6 @@ const MAX_RECENT = 6
 
 /**
  * Global search overlay (Feature 12).
- *
- * Cmd/Ctrl+F opens it, Escape closes it, results are grouped by entity, matches
- * are highlighted, recent searches are remembered, and quoted phrases work.
  */
 export function SearchOverlay() {
   const open = useUiStore((state) => state.searchOpen)
@@ -136,21 +134,32 @@ export function SearchOverlay() {
   const totalShown = visible.reduce((sum, section) => sum + section.rows.length, 0)
 
   return (
-    <div
-      className="fixed inset-0 z-100 flex items-start justify-center bg-black/40 p-4 pt-[10vh] backdrop-blur-[2px]"
+    <motion.div
+      className="fixed inset-0 z-100 flex items-start justify-center bg-black/50 p-4 pt-[10vh] backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Search Threadwise"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
       onMouseDown={(event) => event.target === event.currentTarget && closeSearch()}
     >
-      <div className="flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-card shadow-lg">
-        <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
-          <MagnifyingGlass size={16} className="shrink-0 text-ink-subtle" />
+      <motion.div
+        className="flex max-h-[72vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-card border border-line/60 shadow-2xl"
+        initial={{ opacity: 0, scale: 0.96, y: -8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: -4 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {/* Search input */}
+        <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+          <MagnifyingGlass size={17} className="shrink-0 text-ink-subtle" />
           <input
             ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder='Search threads, people, captures, commitments…  (try "quoted phrases")'
+            placeholder='Search threads, people, captures…'
             aria-label="Search query"
             className="h-8 min-w-0 flex-1 bg-transparent text-body text-ink placeholder:text-ink-subtle focus:outline-none"
           />
@@ -158,46 +167,40 @@ export function SearchOverlay() {
             type="button"
             onClick={closeSearch}
             aria-label="Close search"
-            className="rounded-sm p-1 text-ink-subtle hover:bg-overlay hover:text-ink"
+            className="flex size-7 items-center justify-center rounded-lg text-ink-subtle transition-all hover:bg-overlay hover:text-ink"
           >
             <X size={15} />
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 border-b border-line px-3 py-2">
-          {TYPE_FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              type="button"
-              aria-pressed={type === filter.value}
-              onClick={() => setType(filter.value)}
-              className={cn(
-                'h-7 rounded-full px-2.5 text-tiny font-medium transition-colors',
-                type === filter.value
-                  ? 'bg-primary text-ink-inverse'
-                  : 'bg-overlay text-ink-muted hover:text-ink',
-              )}
-            >
-              {filter.label}
-            </button>
-          ))}
+        {/* Type filter pills */}
+        <div className="border-b border-line px-4 py-2.5">
+          <FilterPills
+            label="Filter results by type"
+            options={TYPE_FILTERS}
+            value={type}
+            onChange={setType}
+            size="sm"
+          />
         </div>
+
+        {/* Results */}
         <div className="min-h-0 flex-1 overflow-y-auto scroll-slim px-3 py-3">
           {!active ? (
-            <div>
+            <div className="px-1">
               {recent.length > 0 ? (
                 <>
-                  <h3 className="mb-2 flex items-center gap-1.5 text-tiny font-semibold tracking-[0.08em] text-ink-subtle uppercase">
+                  <h3 className="mb-2.5 flex items-center gap-1.5 text-tiny font-semibold tracking-[0.08em] text-ink-subtle uppercase">
                     <ClockCounterClockwise size={12} />
-                    Recent searches
+                    Recent
                   </h3>
-                  <ul className="mb-3 flex flex-wrap gap-1.5">
+                  <ul className="mb-4 flex flex-wrap gap-1.5">
                     {recent.map((item) => (
                       <li key={item}>
                         <button
                           type="button"
                           onClick={() => setQuery(item)}
-                          className="rounded-full bg-overlay px-2.5 py-1 text-small text-ink-muted hover:text-ink"
+                          className="rounded-full bg-overlay px-3 py-1 text-small text-ink-muted transition-colors hover:bg-line hover:text-ink"
                         >
                           {item}
                         </button>
@@ -207,7 +210,7 @@ export function SearchOverlay() {
                 </>
               ) : null}
               <p className="text-small text-ink-subtle">
-                Type at least 2 characters to search across everything.
+                Type at least 2 characters to search.
               </p>
             </div>
           ) : status === 'loading' ? (
@@ -217,19 +220,20 @@ export function SearchOverlay() {
           ) : totalShown === 0 ? (
             <EmptyState
               title="No matches"
-              description={`Nothing found for “${term}”. Try a different word or a quoted phrase.`}
-              className="py-8"
+              description={`Nothing found for "${term}".`}
+              className="py-8 border-none bg-transparent"
             />
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
               {visible.map((section) => {
                 if (section.rows.length === 0) return null
                 const Icon = section.Icon
                 return (
                   <section key={section.key}>
-                    <h3 className="mb-1.5 flex items-center gap-1.5 text-tiny font-semibold tracking-[0.08em] text-ink-subtle uppercase">
+                    <h3 className="mb-2 flex items-center gap-1.5 px-1 text-tiny font-semibold tracking-[0.08em] text-ink-subtle uppercase">
                       <Icon size={12} />
-                      {section.label} · {section.rows.length}
+                      {section.label}
+                      <span className="ml-auto font-normal">{section.rows.length}</span>
                     </h3>
                     <ul className="flex flex-col gap-0.5">
                       {section.rows.map((row) => (
@@ -237,13 +241,13 @@ export function SearchOverlay() {
                           <button
                             type="button"
                             onClick={() => go(row.path)}
-                            className="flex w-full items-start gap-2 rounded-sm px-2 py-2 text-left transition-colors hover:bg-overlay"
+                            className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-100 hover:bg-overlay"
                           >
                             {row.dueDate !== undefined || row.status ? (
                               <UrgencyDot
                                 dueDate={row.dueDate}
                                 status={row.status ?? 'open'}
-                                className="mt-1.5"
+                                className="mt-1.5 shrink-0"
                               />
                             ) : null}
                             <span className="min-w-0 flex-1">
@@ -268,11 +272,14 @@ export function SearchOverlay() {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-line px-3 py-2 text-tiny text-ink-subtle">
-          <span>Esc to close</span>
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-line px-4 py-2.5 text-tiny text-ink-subtle">
+          <span>
+            <kbd className="rounded bg-overlay px-1 py-0.5 font-mono text-[11px]">Esc</kbd> to close
+          </span>
           <span>{active && results ? `${results.total ?? 0} results` : 'Your data only'}</span>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

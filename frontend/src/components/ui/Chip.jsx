@@ -1,4 +1,4 @@
-import { CheckSquare, Lightning, Note, Question, Snowflake } from '@phosphor-icons/react'
+import { CheckSquare, Lightning, Note, Question, Snowflake } from '@/components/icons'
 import { CAPTURE_TYPE_MAP } from '@/config/constants'
 import { cn } from '@/lib/utils'
 

@@ -1,4 +1,4 @@
-import { Users } from '@phosphor-icons/react'
+import { Users } from '@/components/icons'
 import { Avatar } from '@/components/ui/Avatar'
 import { Chip } from '@/components/ui/Chip'
 import { EmptyState } from '@/components/ui/Feedback'

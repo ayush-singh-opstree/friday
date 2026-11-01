@@ -20,6 +20,11 @@ export const ENDPOINTS = Object.freeze({
     archive: (id) => `/threads/${id}/archive`,
     restore: (id) => `/threads/${id}/restore`,
     snooze: (id) => `/threads/${id}/snooze`,
+    // Audit-trail feed (backend routers/threads.py -> GET /threads/{id}/timeline)
+    timeline: (id) => `/threads/${id}/timeline`,
+    // Thread <-> person links (backend routers/people.py -> threads_people_router)
+    people: (id) => `/threads/${id}/people`,
+    person: (id, personId) => `/threads/${id}/people/${personId}`,
   },
 
   captures: {
@@ -45,6 +50,7 @@ export const ENDPOINTS = Object.freeze({
     update: (id) => `/people/${id}`,
     remove: (id) => `/people/${id}`,
     merge: () => '/people/merge',
+    threads: (id) => `/people/${id}/threads`,
   },
 
   ai: {

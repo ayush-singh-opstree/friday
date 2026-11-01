@@ -1,6 +1,6 @@
 import { Component } from 'react'
-import { CheckCircle, CloudArrowUp, Info, Warning, WifiSlash, XCircle } from '@phosphor-icons/react'
-import { useSyncStore, useUiStore } from '@/store'
+import { CloudArrowUp, WifiSlash } from '@/components/icons'
+import { useSyncStore } from '@/store'
 import { Button } from '@/components/ui/Button'
 import { cn, pluralise } from '@/lib/utils'
 
@@ -35,54 +35,14 @@ export class ErrorBoundary extends Component {
   }
 }
 
-const TOAST_TONES = {
-  info: { icon: Info, className: 'border-line bg-card text-ink' },
-  success: { icon: CheckCircle, className: 'border-success/30 bg-success/10 text-ink' },
-  warning: { icon: Warning, className: 'border-warning/30 bg-warning/10 text-ink' },
-  danger: { icon: XCircle, className: 'border-danger/30 bg-danger/10 text-ink' },
-}
-
-/** Global toast viewport. Mounted once by `AppProviders`. */
-export function Toaster() {
-  const toasts = useUiStore((state) => state.toasts)
-  const dismissToast = useUiStore((state) => state.dismissToast)
-
-  if (toasts.length === 0) return null
-
-  return (
-    <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-100 flex flex-col items-center gap-2 p-4 pb-safe-tabs sm:pb-4"
-      role="status"
-      aria-live="polite"
-    >
-      {toasts.map((toast) => {
-        const tone = TOAST_TONES[toast.tone] ?? TOAST_TONES.info
-        const Icon = tone.icon
-        return (
-          <button
-            key={toast.id}
-            type="button"
-            onClick={() => dismissToast(toast.id)}
-            className={cn(
-              'pointer-events-auto flex w-full max-w-md items-start gap-2.5 rounded-md border px-3.5 py-3 text-left text-small shadow-md',
-              tone.className,
-            )}
-          >
-            <Icon size={16} weight="fill" className="mt-0.5 shrink-0" />
-            <span className="flex-1">{toast.message}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 /**
  * Connectivity + sync banner (Requirement 11).
  *
  *   offline          -> "saved locally"
  *   online + pending -> "N changes waiting to sync" + Sync now
  *   online + idle    -> hidden
+ *
+ * Toasts are handled separately by `components/common/Toaster.jsx` (sonner).
  */
 export function OfflineBanner() {
   const online = useSyncStore((state) => state.online)

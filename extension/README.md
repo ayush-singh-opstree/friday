@@ -15,9 +15,9 @@ Per [`../docs/09_release_plan.md`](../docs/09_release_plan.md) it ships in **Pha
 
 | Surface | File | What it does |
 |---|---|---|
-| Popup | `src/pages/popup/` | Top-3 attention threads + Quick Capture (type, thread, commitment detection) |
-| Side panel | `src/pages/sidepanel/` | "On this page" (matched person, their threads + open commitments, capture), Today, Capture |
-| Options | `src/pages/options/` | Connection (data source, sign out, reset demo), Detection, Notifications, Privacy, Account, About |
+| Popup | `src/pages/popup/` | Top-3 attention threads + Quick Capture (type, thread, commitment detection) + theme toggle |
+| Side panel | `src/pages/sidepanel/` | "On this page" (matched person, their threads + open commitments, capture), People, Search, Today, Capture + theme toggle |
+| Options | `src/pages/options/` | Account, Connection (data source, sign out, reset demo), **Appearance (theme)**, Detection, Notifications, Privacy, About |
 | Background | `src/background/index.js` | Context menu "Capture to Threadwise", page-context relay, hourly badge sync |
 | Content script | `src/content/index.js` | Detects the person on LinkedIn/Gmail, publishes context, floating launcher pill |
 
@@ -29,9 +29,15 @@ content is never read, stored or transmitted.
 and the content script adds only a lightweight launcher pill. This avoids injecting a full React
 tree into host pages, so LinkedIn/Gmail CSS can never leak into, or be broken by, the companion.
 
+**Theme:** System / Light / Dark is chosen in **Options → Appearance**, or cycled from the header
+of the popup and side panel (`ThemeToggle`). The preference lives in `settingsStore`
+(`chrome.storage.local`) and is applied by `ThemeProvider`, which flips the `dark`/`light` class so
+the CSS custom properties in `src/styles/theme.css` switch across every surface. Fonts (Inter /
+JetBrains Mono) are self-hosted via `@fontsource-variable/*`, imported by each surface's entry.
+
 ## Stack
 
-React 19 · Vite 8 (JS) · Tailwind v4 · **CRXJS v3** (MV3 bundling + HMR) · Zustand · Radix · Phosphor
+React 19 · Vite 8 (JS) · Tailwind v4 · **CRXJS v3** (MV3 bundling + HMR) · Zustand · Radix · **lucide-react** · **sonner**
 
 ## Commands
 
@@ -67,8 +73,11 @@ src/
 
 ## Known gaps (Phase 2 remaining)
 
-- Commands are wired to the **bundled demo backend**; point `VITE_API_BASE_URL` at the real API to
-  switch (the same env switch the web app uses).
+- Commands run against the **bundled demo dataset** by default; point `VITE_API_BASE_URL` at the
+  real backend and set `VITE_USE_MOCK_API=false` to switch (the same env switch the web app uses).
+  `src/apis/adapters.js` maps the FastAPI snake_case contract to the UI's camelCase shape, exactly
+  like `../frontend/src/apis/adapters.js`, so the companion and the website read the same API.
+  The active source is shown in the Options → Connection section.
 - Gmail sender detection uses the first `span[email][name]` in the DOM — needs hardening against
   Gmail's DOM changes.
 - Companion overlay is Pro-gated in the capability matrix but the upgrade path is not yet surfaced

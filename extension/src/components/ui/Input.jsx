@@ -2,24 +2,24 @@ import { forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 
 const FIELD_BASE =
-  'w-full rounded-md border bg-overlay text-ink placeholder:text-ink-subtle transition-shadow duration-150 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
+  'w-full rounded-xl border bg-overlay text-ink placeholder:text-ink-subtle transition-all duration-150 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
 
 const FIELD_STATE = {
-  default: 'border-line focus:border-primary focus:ring-3 focus:ring-primary/15',
-  error: 'border-danger focus:border-danger focus:ring-3 focus:ring-danger/15',
+  default: 'border-line focus:border-primary focus:ring-3 focus:ring-primary/12 focus:bg-card',
+  error: 'border-danger focus:border-danger focus:ring-3 focus:ring-danger/12',
 }
 
 function Field({ label, hint, error, htmlFor, children, className }) {
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       {label ? (
-        <label htmlFor={htmlFor} className="text-small font-medium text-ink-muted">
+        <label htmlFor={htmlFor} className="text-small font-medium text-ink">
           {label}
         </label>
       ) : null}
       {children}
       {error ? (
-        <p className="text-small text-danger">{error}</p>
+        <p className="text-tiny text-danger font-medium">{error}</p>
       ) : hint ? (
         <p className="text-tiny text-ink-subtle">{hint}</p>
       ) : null}
@@ -27,7 +27,7 @@ function Field({ label, hint, error, htmlFor, children, className }) {
   )
 }
 
-/** Text input - 44px tall, 12px 14px padding, 10px radius. */
+/** Text input - 44px tall, 12px 14px padding, 12px radius. */
 export const Input = forwardRef(function Input(
   { className, invalid = false, id, ...props },
   ref,
@@ -40,7 +40,7 @@ export const Input = forwardRef(function Input(
       className={cn(
         FIELD_BASE,
         FIELD_STATE[invalid ? 'error' : 'default'],
-        'h-11 px-3.5 text-body',
+        'h-10 px-3.5 text-small',
         className,
       )}
       {...props}
@@ -62,7 +62,7 @@ export const Textarea = forwardRef(function Textarea(
       className={cn(
         FIELD_BASE,
         FIELD_STATE[invalid ? 'error' : 'default'],
-        'resize-none px-3.5 py-3 text-body leading-relaxed',
+        'resize-none px-3.5 py-2.5 text-small leading-relaxed',
         className,
       )}
       {...props}
@@ -70,7 +70,7 @@ export const Textarea = forwardRef(function Textarea(
   )
 })
 
-/** Native select styled to match the input tokens. */
+/** Select styled to match modern inputs. */
 export const Select = forwardRef(function Select({ className, id, children, ...props }, ref) {
   return (
     <select
@@ -79,7 +79,7 @@ export const Select = forwardRef(function Select({ className, id, children, ...p
       className={cn(
         FIELD_BASE,
         FIELD_STATE.default,
-        'h-10 px-3 pr-8 text-small appearance-none bg-no-repeat',
+        'h-10 px-3.5 text-small cursor-pointer',
         className,
       )}
       {...props}

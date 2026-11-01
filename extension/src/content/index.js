@@ -1,17 +1,11 @@
 /**
  * Content script (Feature 13 - Extension Companion).
  *
- * Contract, verbatim from docs/03_feature_specs.md:
+ * Contract:
  *  - runs only on the approved domain list (enforced by content_scripts.matches)
  *  - reads ONLY a display name, an optional email and the page URL
  *  - never reads or stores page body content
  *  - if the user is not signed in, prompt rather than silently doing nothing
- *
- * The rich companion UI lives in the side panel (a real browser sidebar). This
- * script's job is detection: it publishes the page context and shows a small
- * launcher pill so the user can open context without leaving the page.
- *
- * Written in plain JS (no JSX) so the injected payload stays tiny.
  */
 import { detectSource, hostOf, isApprovedUrl } from '@/services/detectionService'
 import { MESSAGE_TYPES } from '@/config/constants'
@@ -81,23 +75,45 @@ function renderPill(context) {
   pill.title = `Open Threadwise context for ${context.name}`
   pill.setAttribute('aria-label', `Open Threadwise context for ${context.name}`)
 
-  // Inline styles only: the pill must be immune to host-page CSS.
+  // Inline styles only: immune to host-page CSS
   Object.assign(pill.style, {
     position: 'fixed',
-    right: '16px',
-    bottom: '16px',
+    right: '20px',
+    bottom: '20px',
     zIndex: '2147483647',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '8px 12px',
+    padding: '8px 14px',
     borderRadius: '999px',
-    border: '1px solid #E8E8EC',
+    border: '1px solid rgba(79, 106, 245, 0.25)',
     background: '#FFFFFF',
     color: '#1A1A2E',
-    font: '500 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+    font: '600 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    boxShadow: '0 8px 24px -4px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06)',
     cursor: 'pointer',
+    transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+    outline: 'none',
+  })
+
+  pill.addEventListener('mouseenter', () => {
+    pill.style.transform = 'translateY(-2px)'
+    pill.style.boxShadow = '0 12px 28px -4px rgba(79, 106, 245, 0.3), 0 4px 10px rgba(0,0,0,0.08)'
+    pill.style.borderColor = '#4F6AF5'
+  })
+
+  pill.addEventListener('mouseleave', () => {
+    pill.style.transform = 'translateY(0)'
+    pill.style.boxShadow = '0 8px 24px -4px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06)'
+    pill.style.borderColor = 'rgba(79, 106, 245, 0.25)'
+  })
+
+  pill.addEventListener('mousedown', () => {
+    pill.style.transform = 'translateY(0) scale(0.96)'
+  })
+
+  pill.addEventListener('mouseup', () => {
+    pill.style.transform = 'translateY(-2px) scale(1)'
   })
 
   const dot = document.createElement('span')
@@ -106,6 +122,7 @@ function renderPill(context) {
     height: '8px',
     borderRadius: '999px',
     background: '#4F6AF5',
+    boxShadow: '0 0 8px rgba(79, 106, 245, 0.6)',
     flex: '0 0 auto',
   })
 
@@ -142,7 +159,6 @@ async function sync() {
 
   const session = await loadSession()
   if (!session?.user) {
-    // Feature 13 edge case: prompt instead of matching silently.
     removePill()
     return
   }
@@ -150,7 +166,7 @@ async function sync() {
   renderPill(context)
 }
 
-/** Re-scan when the SPA changes route (LinkedIn and Gmail are both SPAs). */
+/** Re-scan when the SPA changes route */
 let lastUrl = window.location.href
 function watchNavigation() {
   setInterval(() => {

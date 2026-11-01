@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Snowflake, X } from '@phosphor-icons/react'
+import { ArrowRight, Snowflake, X } from '@/components/icons'
 import {
   clearColdAlert,
   coldDismissalCount,
@@ -22,10 +22,6 @@ import {
 
 /**
  * Going Cold section (Feature 10).
- *
- * Each card offers "Re-engage" (context prompt + capture) and "Dismiss"
- * (suppresses the alert for 7 days). Dismissing the same thread three times in a
- * row offers to archive it, exactly as the spec requires.
  */
 export function GoingColdRail({ threads = [], onChanged }) {
   const [dismissed, setDismissed] = useState([])
@@ -47,31 +43,37 @@ export function GoingColdRail({ threads = [], onChanged }) {
         action={
           <Link
             to="/threads?filter=goingCold"
-            className="flex items-center gap-1 text-tiny font-medium text-primary"
+            className="group/btn inline-flex items-center gap-1.5 rounded-full border border-line/80 bg-surface/80 px-2.5 py-1 text-tiny font-medium text-ink-muted transition-all duration-150 hover:border-primary/40 hover:bg-card hover:text-primary hover:shadow-xs active:scale-95"
           >
-            View all <ArrowRight size={11} weight="bold" />
+            <span>View all</span>
+            <ArrowRight size={11} weight="bold" className="transition-transform duration-150 group-hover/btn:translate-x-0.5" />
           </Link>
         }
       />
 
-      <div className="snap-rail no-scrollbar -mx-4 px-4 pb-1">
+      <div className="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scroll-padding-inline:1rem] [&>*]:flex-none [&>*]:snap-start">
         {visible.map((thread) => (
-          <div key={thread.id} className="w-64 rounded-md border border-line bg-card p-3.5 shadow-sm">
+          <div
+            key={thread.id}
+            className="w-64 rounded-xl border border-cold/30 bg-card p-3.5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+          >
             <div className="flex items-center gap-1.5">
               <Snowflake size={13} weight="bold" className="text-cold" />
-              <span className="text-tiny font-semibold tracking-wide text-[#1565C0] uppercase">
-                {daysSince(thread.lastInteractionAt)} days quiet
+              <span className="text-tiny font-semibold tracking-wide text-cold uppercase">
+                {daysSince(thread.lastInteractionAt)}d quiet
               </span>
             </div>
 
             <Link to={`/threads/${thread.id}`} className="mt-1.5 block">
-              <p className="truncate text-body-medium text-ink hover:text-primary">{thread.title}</p>
+              <p className="truncate text-body-medium font-semibold text-ink hover:text-primary transition-colors">
+                {thread.title}
+              </p>
             </Link>
             <p className="mt-0.5 line-clamp-2 text-small text-ink-muted">
               {thread.attentionReason || `Last contact ${relativeTime(thread.lastInteractionAt)}`}
             </p>
 
-            <div className="mt-2.5 flex items-center gap-1">
+            <div className="mt-3 flex items-center gap-1">
               <ReengageButton thread={thread} onDone={onChanged} />
               <Button
                 variant="ghost"
@@ -98,7 +100,6 @@ export function GoingColdRail({ threads = [], onChanged }) {
   )
 }
 
-/** "Reach out to X — it's been Y days. Here's what you last discussed." */
 function ReengageButton({ thread, onDone }) {
   const [open, setOpen] = useState(false)
   const openQuickCapture = useUiStore((state) => state.openQuickCapture)
@@ -114,12 +115,11 @@ function ReengageButton({ thread, onDone }) {
           <DialogHeader>
             <DialogTitle>Re-engage {thread.title}</DialogTitle>
             <DialogDescription>
-              It&apos;s been {daysSince(thread.lastInteractionAt)} days. Here&apos;s where you left
-              off:
+              {daysSince(thread.lastInteractionAt)} days since last contact.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-md bg-overlay p-3">
+          <div className="rounded-xl bg-overlay p-4">
             <p className="text-body text-ink">
               {thread.attentionReason || 'No recent captures recorded for this thread.'}
             </p>
@@ -146,7 +146,6 @@ function ReengageButton({ thread, onDone }) {
   )
 }
 
-/** Offered after three consecutive dismissals. */
 function ArchivePromptDialog({ thread, onOpenChange, onChanged }) {
   const archiveThread = useThreadStore((state) => state.archiveThread)
   const pushToast = useUiStore((state) => state.pushToast)
@@ -159,8 +158,8 @@ function ArchivePromptDialog({ thread, onOpenChange, onChanged }) {
         <DialogHeader>
           <DialogTitle>Archive this thread?</DialogTitle>
           <DialogDescription>
-            You&apos;ve dismissed “{thread.title}” three times without acting. Archiving keeps its
-            history but removes it from your attention list.
+            You&apos;ve dismissed &ldquo;{thread.title}&rdquo; three times without acting.
+            Archiving keeps its history but removes it from your attention list.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus } from '@phosphor-icons/react'
+import { Plus } from '@/components/icons'
 import { CommitmentDialog } from '@/components/commitment/CommitmentDialog'
 import { CommitmentRow } from '@/components/commitment/CommitmentRow'
 import { Button } from '@/components/ui/Button'

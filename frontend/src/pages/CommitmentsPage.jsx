@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { CheckSquare, Plus } from '@phosphor-icons/react'
-import { PageHeader } from '@/components/layout/PageHeader'
+import { CheckSquare, Plus } from '@/components/icons'
+import { PageContainer, PageHeader } from '@/components/layout/PageHeader'
 import { CommitmentDialog } from '@/components/commitment/CommitmentDialog'
 import { CommitmentRow } from '@/components/commitment/CommitmentRow'
 import { Button } from '@/components/ui/Button'
+import { FilterPills, Toolbar } from '@/components/ui'
 import { EmptyState, LoadingState } from '@/components/ui/Feedback'
 import { Switch } from '@/components/ui/Controls'
 import { DUE_BUCKET_LABELS, dueBucket } from '@/lib/date'
@@ -22,9 +23,6 @@ const GROUP_ORDER = ['overdue', 'today', 'this_week', 'later', 'no_date', 'compl
 
 /**
  * Unified commitments view (Feature 5).
- *
- * All open promises across every thread, grouped by due date, with the
- * All / Mine / Theirs / Overdue filters from the spec.
  */
 export function CommitmentsPage() {
   const {
@@ -64,11 +62,10 @@ export function CommitmentsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <PageContainer>
       <PageHeader
         eyebrow="Commitments"
         title="Everything you've promised"
-        description="Open commitments across every thread, ordered by due date."
         actions={
           <Button size="sm" onClick={() => setDialogOpen(true)}>
             <Plus size={14} weight="bold" />
@@ -77,32 +74,19 @@ export function CommitmentsPage() {
         }
       />
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter commitments by owner">
-          {OWNER_FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              type="button"
-              role="tab"
-              aria-selected={ownerFilter === filter.value}
-              onClick={() => setOwnerFilter(filter.value)}
-              className={cn(
-                'h-8 rounded-full px-3 text-small font-medium transition-colors',
-                ownerFilter === filter.value
-                  ? 'bg-primary text-ink-inverse'
-                  : 'bg-overlay text-ink-muted hover:text-ink',
-              )}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
+      <Toolbar>
+        <FilterPills
+          label="Filter commitments by owner"
+          options={OWNER_FILTERS}
+          value={ownerFilter}
+          onChange={setOwnerFilter}
+        />
 
-        <label className="flex items-center gap-2 text-small text-ink-muted">
+        <label className="flex cursor-pointer items-center gap-2 text-small text-ink-muted">
           <Switch checked={showCompleted} onCheckedChange={toggleShowCompleted} id="show-completed" />
           Show completed
         </label>
-      </div>
+      </Toolbar>
 
       {isLoading && commitments.length === 0 ? (
         <LoadingState label="Loading commitments…" />
@@ -114,24 +98,24 @@ export function CommitmentsPage() {
         />
       ) : groups.length === 0 ? (
         <EmptyState
-          icon={<CheckSquare size={26} weight="duotone" />}
+          icon={<CheckSquare size={24} weight="duotone" />}
           title="Nothing outstanding"
           description="Every promise you track will show up here, grouped by due date."
           action={<Button onClick={() => setDialogOpen(true)}>Create a commitment</Button>}
         />
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="grid gap-5 xl:grid-cols-2 xl:items-start">
           {groups.map((group) => (
             <section key={group.key}>
               <h2
                 className={cn(
-                  'mb-1.5 text-tiny font-semibold tracking-[0.08em] uppercase',
+                  'mb-2 text-tiny font-semibold tracking-[0.08em] uppercase',
                   group.key === 'overdue' ? 'text-danger' : 'text-ink-subtle',
                 )}
               >
                 {group.label} · {group.rows.length}
               </h2>
-              <div className="rounded-md border border-line bg-card p-1">
+              <div className="rounded-xl border border-line bg-card p-1.5 shadow-sm">
                 {group.rows.map((commitment) => (
                   <CommitmentRow
                     key={commitment.id}
@@ -146,6 +130,6 @@ export function CommitmentsPage() {
       )}
 
       <CommitmentDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </div>
+    </PageContainer>
   )
 }

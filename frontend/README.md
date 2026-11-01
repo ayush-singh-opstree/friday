@@ -20,12 +20,17 @@ codebases that share one contract: the REST API documented in
 | Styling | Tailwind CSS v4 + CSS variables | Utilities + design tokens together |
 | Routing | React Router 7 | Standard, lazy-loading friendly |
 | State | Zustand | Small, no boilerplate |
-| Design system | `@phosphor-icons/react`, Radix primitives, `motion` | Documented icon set + accessible primitives |
+| Design system | **`lucide-react`** (via `src/components/icons`), **Radix UI** primitives, **`sonner`**, **`motion`** | Popular, tree-shakable libraries: crisp icons, accessible unstyled primitives, stacked toasts, spring animation |
 | Dates | `date-fns` | Small, tree-shakeable |
 | Offline | Dexie (IndexedDB) | Phase 1E local-first layer |
 
 Everything is **JavaScript** (no TypeScript build step), with JSDoc `@typedef`s in
 `src/types/` for editor intellisense.
+
+Typography is **self-hosted** — `@fontsource-variable/inter` +
+`@fontsource-variable/jetbrains-mono` are imported in `src/main.jsx` and wired through
+`--font-sans` / `--font-mono`. No external font CDN, so the demo keeps working offline
+(docs/09_release_plan.md → D2).
 
 ---
 
@@ -36,20 +41,67 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # production bundle into dist/
 npm run lint       # eslint
+npm run verify:adapters   # API adapter contract (offline, fixtures)
+npm run verify:live       # ...plus the running backend on :8000
+npm run verify:attention  # Attention Engine rules
+npm run verify:isolation  # per-user data isolation
 npm run icons      # regenerate PWA icons (zero-dependency PNG encoder)
 ```
 
-**Demo mode is the default.** With no `VITE_API_BASE_URL` the app serves a seeded dataset
+### Running against the backend (current setup)
+
+`.env.local` (git-ignored) already points this app at the FastAPI backend:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8000
+VITE_USE_MOCK_API=false
+```
+
+Start the API (`cd ../backend && python run.py`), then `npm run dev`. The backend allows
+`http://localhost:5173` through CORS, and because Phase 0 has no auth routes, live sign-in binds a
+local demo session automatically. Delete `.env.local` to fall back to the bundled demo dataset —
+the app auto-detects which source to use and shows it in the shell's data-source badge.
+
+**Demo mode** needs no configuration: with no `VITE_API_BASE_URL` the app serves a seeded dataset
 (the *Meera* persona from `docs/04_personas_journeys.md`) from `src/mocks`, so every screen is
 explorable before the backend exists. Sign in with any non-empty email/password.
 
-To point at a real backend:
+To point at a *different* backend, copy the template and edit the URL:
 
 ```bash
 cp .env.example .env.local
-# set VITE_API_BASE_URL=https://api.threadwise.app
-# and  VITE_USE_MOCK_API=false
+# VITE_API_BASE_URL=https://api.threadwise.app
+# VITE_USE_MOCK_API=false
 ```
+
+### Backend integration (dual mode)
+
+The API layer runs in two modes that share one UI contract:
+
+| Mode | Trigger | Transport |
+|---|---|---|
+| **Mock** (default) | no `VITE_API_BASE_URL`, or `VITE_USE_MOCK_API=true` | `src/mocks` (in-browser demo router) |
+| **Live** | `VITE_API_BASE_URL` set and `VITE_USE_MOCK_API=false` | the FastAPI backend in `../backend` |
+
+`src/apis/adapters.js` is the boundary: it translates UI camelCase to the
+backend's snake_case contract (`owner_type`, `due_date`, `overdue_only`,
+`completion_note`, `snooze_until`) and unwraps the `{ data, total }` list
+envelope back into the shapes stores expect. Endpoints the backend composes from
+several resources are stitched here too:
+
+- `GET /threads/:id` detail = thread + `GET /captures?thread_id=…` +
+  `GET /commitments?thread_id=…` + `GET /threads/:id/timeline`.
+- `GET /attention/today` is enriched with overdue commitments and the inbox count.
+- `POST /attention/recompute/:id` returns the score, which is folded back onto
+  the refreshed thread so the Today ranking updates.
+- `POST /threads/:id/snooze` converts the UI's whole-day preset into an absolute
+  `snooze_until`.
+
+Because the **Phase 0 backend is single-user with no auth**
+(`backend/app/config.py -> DEMO_USER_ID`), live sign-in first tries
+`POST /auth/login`; if that route does not exist it binds a local session to the
+demo user. The data source is always visible via the `DataSourceBadge` in the
+app shell and on the sign-in screen.
 
 ---
 

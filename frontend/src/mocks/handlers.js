@@ -206,6 +206,13 @@ route('GET', /^\/people$/, async ({ query }) => {
       threadCount: threadRows.length,
       openCommitmentCount: open.length,
       threads: threadRows.map((thread) => ({ id: thread.id, title: thread.title })),
+      // Most recent contact across the person's threads (parity with live mode).
+      lastInteractionAt:
+        threadRows
+          .map((thread) => thread.lastInteractionAt)
+          .filter(Boolean)
+          .sort()
+          .at(-1) ?? null,
     }
   })
 

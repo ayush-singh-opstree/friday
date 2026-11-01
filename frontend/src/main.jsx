@@ -1,5 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+// Self-hosted variable fonts (offline-safe - no external font CDN at runtime).
+import '@fontsource-variable/inter'
+import '@fontsource-variable/jetbrains-mono'
 import App from '@/app/App'
 import '@/styles/index.css'
 

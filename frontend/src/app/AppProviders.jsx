@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ErrorBoundary } from '@/components/common/System'
 import { AuthProvider } from '@/auth'
@@ -41,7 +42,12 @@ export function AppProviders({ children }) {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        {/* Single Tooltip provider for the whole app (shell rail, header icons). */}
+        <TooltipPrimitive.Provider delayDuration={250} skipDelayDuration={300}>
+          {children}
+        </TooltipPrimitive.Provider>
+      </AuthProvider>
     </ErrorBoundary>
   )
 }

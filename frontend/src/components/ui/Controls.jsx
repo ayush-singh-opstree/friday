@@ -3,10 +3,10 @@ import * as SwitchPrimitive from '@radix-ui/react-switch'
 import { cn } from '@/lib/utils'
 
 const FIELD_BASE =
-  'w-full rounded-md border bg-overlay text-ink placeholder:text-ink-subtle transition-shadow duration-150 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
+  'w-full rounded-xl border bg-overlay text-ink placeholder:text-ink-subtle transition-all duration-150 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
 const FIELD_STATE = {
-  default: 'border-line focus:border-primary focus:ring-3 focus:ring-primary/15',
-  error: 'border-danger focus:border-danger focus:ring-3 focus:ring-danger/15',
+  default: 'border-line focus:border-primary focus:ring-3 focus:ring-primary/12 focus:bg-card',
+  error: 'border-danger focus:border-danger focus:ring-3 focus:ring-danger/12',
 }
 
 /** Label + control + hint/error wrapper. */
@@ -14,7 +14,7 @@ export function Field({ label, hint, error, htmlFor, children, className }) {
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       {label ? (
-        <label htmlFor={htmlFor} className="text-small font-medium text-ink-muted">
+        <label htmlFor={htmlFor} className="text-small font-medium text-ink">
           {label}
         </label>
       ) : null}
@@ -101,9 +101,9 @@ export function Switch({ className, checked, onCheckedChange, disabled, id }) {
 /** Labelled switch row used across Settings. */
 export function SwitchRow({ label, description, id, checked, onCheckedChange, disabled }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-3">
+    <div className="flex items-start justify-between gap-4 py-3.5">
       <div className="min-w-0">
-        <label htmlFor={id} className="block text-body-medium text-ink">
+        <label htmlFor={id} className="block text-body-medium text-ink cursor-pointer">
           {label}
         </label>
         {description ? <p className="mt-0.5 text-small text-ink-muted">{description}</p> : null}

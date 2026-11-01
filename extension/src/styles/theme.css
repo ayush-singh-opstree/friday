@@ -14,9 +14,10 @@
 
 @theme {
   /* Typography ------------------------------------------------------- */
-  --font-sans: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont,
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont,
     'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
+    monospace;
 
   --text-display: 28px;
   --text-display--line-height: 1.2;
@@ -125,6 +126,11 @@
 .light {
   color-scheme: light;
 }
+
+/* Base interaction polish and named utilities live in `index.css`, which owns
+ * everything that is not a design token (parity with the web app). Keeping this
+ * file to tokens alone means one source of truth for colour/type/space, and
+ * nothing here can affect layout by accident. */
 
 /* Motion preferences (docs/07_design_system.md -> Motion principles) */
 @media (prefers-reduced-motion: reduce) {

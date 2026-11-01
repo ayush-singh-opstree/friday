@@ -1,22 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Sparkle, X } from '@phosphor-icons/react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Sparkle, X } from '@/components/icons'
 import { CAPTURE_MAX_LENGTH, CAPTURE_TYPES } from '@/config/constants'
 import { inferCaptureType, looksLikeCommitment, parseDueDate } from '@/lib/patterns'
 import { useCaptureStore, useThreadStore, useUiStore } from '@/store'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { Textarea } from '@/components/ui/Controls'
+import { SelectMenu } from '@/components/ui/SelectMenu'
 import { cn } from '@/lib/utils'
+import { motion } from 'motion/react'
 
 /**
  * Quick Capture (Feature 4).
- *
- * Global capture sheet: FAB or Cmd/Ctrl+K, auto-focus, type selection, thread
- * assignment and smart commitment detection (docs/05_user_flows.md -> Flow 3).
- */
-/**
- * Outer shell: mounts the form only while the sheet is open, so draft state
- * resets naturally and no state is copied inside an effect.
  */
 export function QuickCaptureSheet() {
   const quickCapture = useUiStore((state) => state.quickCapture)
@@ -42,7 +37,17 @@ function QuickCaptureForm({ initialThreadId }) {
   const [error, setError] = useState(null)
   const inputRef = useRef(null)
 
-  // Auto-focus on mount (Feature 4 -> "Text field auto-focuses on open").
+  const reset = useCallback(() => {
+    setContent('')
+    setType('note')
+    setError(null)
+  }, [])
+
+  const handleClose = useCallback(() => {
+    reset()
+    closeQuickCapture()
+  }, [reset, closeQuickCapture])
+
   useEffect(() => {
     const timer = setTimeout(() => inputRef.current?.focus(), 60)
     return () => clearTimeout(timer)
@@ -50,14 +55,14 @@ function QuickCaptureForm({ initialThreadId }) {
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') closeQuickCapture()
+      if (event.key === 'Escape') handleClose()
       if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
         inputRef.current?.form?.requestSubmit()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [closeQuickCapture])
+  }, [handleClose])
 
   const suggestion = useMemo(
     () =>
@@ -77,6 +82,7 @@ function QuickCaptureForm({ initialThreadId }) {
     try {
       await createCapture({ content, type, threadId, source: 'manual' })
       pushToast(threadId ? 'Capture added to the thread.' : 'Saved to your Inbox.', 'success')
+      reset()
       closeQuickCapture()
     } catch (submitError) {
       setError(submitError?.message ?? 'Could not save that capture.')
@@ -84,29 +90,39 @@ function QuickCaptureForm({ initialThreadId }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-90 flex items-end justify-center bg-black/40 backdrop-blur-[2px] sm:items-center"
+    <motion.div
+      className="fixed inset-0 z-90 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center"
       role="dialog"
       aria-modal="true"
       aria-label="Quick capture"
-      onMouseDown={(event) => event.target === event.currentTarget && closeQuickCapture()}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      onMouseDown={(event) => event.target === event.currentTarget && handleClose()}
     >
-      <form
+      <motion.form
         onSubmit={handleSubmit}
-        className="w-full rounded-t-lg bg-card p-4 shadow-lg sm:max-w-lg sm:rounded-lg"
+        className="w-full rounded-t-2xl bg-card border border-line/60 border-b-0 p-5 shadow-2xl sm:max-w-lg sm:rounded-2xl sm:border-b"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 16 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-heading-3 text-ink">Quick capture</h2>
+        {/* Header */}
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-heading-3 font-semibold text-ink">Quick capture</h2>
           <button
             type="button"
-            onClick={closeQuickCapture}
+            onClick={handleClose}
             aria-label="Close"
-            className="rounded-sm p-1 text-ink-subtle hover:bg-overlay hover:text-ink"
+            className="flex size-7 items-center justify-center rounded-lg text-ink-subtle transition-all hover:bg-overlay hover:text-ink"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
 
+        {/* Textarea */}
         <Textarea
           ref={inputRef}
           rows={4}
@@ -118,12 +134,13 @@ function QuickCaptureForm({ initialThreadId }) {
         />
 
         <div className="mt-1.5 flex items-center justify-between text-tiny text-ink-subtle">
-          <span>{threadId ? 'Filed into the selected thread' : 'Saves to your Inbox'}</span>
+          <span>{threadId ? 'Filing into selected thread' : 'Saves to Inbox'}</span>
           <span className={cn(overLimit && 'font-semibold text-danger')}>
             {content.length}/{CAPTURE_MAX_LENGTH}
           </span>
         </div>
 
+        {/* Type chips */}
         <div className="mt-3 flex flex-wrap gap-1.5">
           {CAPTURE_TYPES.map((option) => (
             <button key={option.value} type="button" onClick={() => setType(option.value)}>
@@ -135,39 +152,39 @@ function QuickCaptureForm({ initialThreadId }) {
           ))}
         </div>
 
-        <label
-          htmlFor="capture-thread"
-          className="mt-3 mb-1 block text-tiny font-medium text-ink-muted"
-        >
-          Assign to a thread
-        </label>
-        <select
-          id="capture-thread"
-          value={threadId ?? ''}
-          onChange={(event) => setThreadId(event.target.value || null)}
-          className="h-10 w-full rounded-md border border-line bg-overlay px-3 text-small text-ink focus:border-primary focus:outline-none"
-        >
-          <option value="">Inbox (unassigned)</option>
-          {threads
-            .filter((thread) => thread.status === 'active')
-            .map((thread) => (
-              <option key={thread.id} value={thread.id}>
-                {thread.title}
-              </option>
-            ))}
-        </select>
+        {/* Thread selector */}
+        <div className="mt-3">
+          <label className="mb-1.5 block text-small font-medium text-ink">
+            Assign to thread
+          </label>
+          <SelectMenu
+            value={threadId ?? ''}
+            onChange={(val) => setThreadId(val || null)}
+            options={[
+              { value: '', label: 'Inbox (unassigned)' },
+              ...threads
+                .filter((thread) => thread.status === 'active')
+                .map((thread) => ({
+                  value: thread.id,
+                  label: thread.title,
+                })),
+            ]}
+            className="w-full h-11"
+          />
+        </div>
 
+        {/* Smart suggestion */}
         {suggestion ? (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-primary/25 bg-primary-light px-3 py-2.5">
+          <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary-light px-3.5 py-3">
             <Sparkle size={15} weight="fill" className="mt-0.5 shrink-0 text-primary" />
             <p className="text-small text-ink">
-              This looks like a commitment.{' '}
+              Looks like a commitment.{' '}
               <button
                 type="button"
-                className="font-medium text-primary underline"
+                className="font-semibold text-primary underline underline-offset-2"
                 onClick={() => setType('action')}
               >
-                Track it as an action
+                Track as action
               </button>
             </p>
           </div>
@@ -175,15 +192,21 @@ function QuickCaptureForm({ initialThreadId }) {
 
         {error ? <p className="mt-2 text-small text-danger">{error}</p> : null}
 
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <Button variant="ghost" onClick={closeQuickCapture}>
-            Cancel
-          </Button>
-          <Button type="submit" loading={saving} disabled={overLimit || !content.trim()}>
-            Save capture
-          </Button>
+        {/* Footer */}
+        <div className="mt-4 flex items-center justify-between gap-2 border-t border-line pt-4">
+          <p className="text-tiny text-ink-subtle hidden sm:block">
+            <kbd className="rounded bg-overlay px-1.5 py-0.5 font-mono text-[11px]">Ctrl+K</kbd> to open · <kbd className="rounded bg-overlay px-1.5 py-0.5 font-mono text-[11px]">Ctrl+Enter</kbd> to save
+          </p>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button variant="ghost" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={saving} disabled={overLimit || !content.trim()}>
+              Save capture
+            </Button>
+          </div>
         </div>
-      </form>
-    </div>
+      </motion.form>
+    </motion.div>
   )
 }

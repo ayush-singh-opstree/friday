@@ -1,4 +1,4 @@
-import { Check } from '@phosphor-icons/react'
+import { Check } from '@/components/icons'
 import { UrgencyDot } from '@/components/ui/Badge'
 import { humaniseDueDate } from '@/lib/date'
 import { cn } from '@/lib/utils'
@@ -14,30 +14,32 @@ export function CommitmentRow({
   className,
   busy = false,
 }) {
-  const owner = commitment.ownerType === 'person' ? (commitment.ownerPerson?.fullName ?? 'Them') : 'Me'
+  const owner =
+    commitment.ownerType === 'person' ? (commitment.ownerPerson?.fullName ?? 'Them') : 'Me'
   const completed = commitment.status === 'completed'
 
   return (
     <div
       className={cn(
-        'group flex items-start gap-2.5 rounded-sm px-2 py-2 transition-colors hover:bg-overlay',
-        completed && 'opacity-60',
+        'group flex items-start gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 hover:bg-overlay',
+        completed && 'opacity-55',
         className,
       )}
     >
+      {/* Complete button */}
       <button
         type="button"
         onClick={() => onComplete?.(commitment)}
         disabled={completed || busy || !onComplete}
         aria-label={completed ? 'Completed' : `Mark "${commitment.description}" complete`}
         className={cn(
-          'mt-0.5 flex size-4.5 shrink-0 items-center justify-center rounded-full border transition-colors',
+          'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-150',
           completed
             ? 'border-success bg-success text-white'
-            : 'border-line bg-card hover:border-success hover:text-success',
+            : 'border-line bg-card hover:border-success hover:bg-success/10 hover:text-success',
         )}
       >
-        {completed ? <Check size={11} weight="bold" /> : null}
+        {completed ? <Check size={10} weight="bold" /> : null}
       </button>
 
       <div className="min-w-0 flex-1">

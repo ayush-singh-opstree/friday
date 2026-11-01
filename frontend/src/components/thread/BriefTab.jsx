@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowCounterClockwise, CopySimple, Robot, Warning } from '@phosphor-icons/react'
+import { ArrowCounterClockwise, CopySimple, Robot, Warning } from '@/components/icons'
 import { aiApi } from '@/apis'
 import { Can } from '@/authorization'
 import { CAPABILITIES } from '@/authorization/permissions'

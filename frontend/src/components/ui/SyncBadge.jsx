@@ -1,4 +1,4 @@
-import { CloudArrowUp } from '@phosphor-icons/react'
+import { CloudArrowUp } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 /**

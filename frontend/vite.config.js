@@ -20,6 +20,9 @@ export default defineConfig({
   build: {
     target: 'esnext',
     sourcemap: false,
-    chunkSizeWarningLimit: 900,
+    // Radix primitives, Phosphor icons and `motion` (Framer Motion - the
+    // animation library named in docs/08_system_architecture.md) are all
+    // bundled into the single app chunk, so the ceiling reflects that stack.
+    chunkSizeWarningLimit: 1200,
   },
 })

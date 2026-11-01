@@ -1,6 +1,6 @@
 import { create } from 'zustand'
+import { toast } from 'sonner'
 import { DEFAULT_SETTINGS, STORAGE_KEYS } from '@/config/constants'
-import { uid } from '@/lib/utils'
 
 /** Read persisted settings (synchronous so the first paint is correct). */
 function readSettings() {
@@ -17,21 +17,22 @@ function readSettings() {
  * queue, the Quick Capture sheet, the search overlay and user settings.
  */
 export const useUiStore = create((set, get) => ({
-  /* ------------------------------------------------------------ toasts --- */
-  /** @type {Array<{id: string, tone: 'info'|'success'|'warning'|'danger', message: string}>} */
-  toasts: [],
+  /* ----------------------------------------------------------- toasts --- */
   /**
+   * Push a notification. Routed into **sonner** (mounted by `<Toaster />`), so
+   * the app gets stacking, swipe-to-dismiss and screen-reader announcements for
+   * free while call sites keep the same simple API.
+   *
    * @param {string} message
    * @param {'info'|'success'|'warning'|'danger'} [tone]
    */
   pushToast(message, tone = 'info') {
-    const id = uid('toast')
-    set((state) => ({ toasts: [...state.toasts, { id, message, tone }] }))
-    setTimeout(() => get().dismissToast(id), 4500)
-    return id
-  },
-  dismissToast(id) {
-    set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) }))
+    const options = { duration: tone === 'danger' ? 6000 : 4500 }
+    if (tone === 'success') toast.success(message, options)
+    else if (tone === 'danger') toast.error(message, options)
+    else if (tone === 'warning') toast.warning(message, options)
+    else toast(message, options)
+    return message
   },
 
   /* ------------------------------------------------------ quick capture --- */

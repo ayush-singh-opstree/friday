@@ -5,18 +5,15 @@ import { Button } from '@/components/ui/Button'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog'
-import { Field, Input, Select } from '@/components/ui/Controls'
+import { Field, Input } from '@/components/ui/Controls'
+import { SelectMenu } from '@/components/ui/SelectMenu'
 
 /**
- * Create / edit a commitment (Feature 5 / docs/05_user_flows.md -> Flow 4).
- *
- * Fields: description (required), owner (Me or one of the thread's people),
- * due date and the linked thread.
+ * Create / edit a commitment (Feature 5).
  */
 export function CommitmentDialog({
   open,
@@ -24,6 +21,32 @@ export function CommitmentDialog({
   threadId = null,
   people = [],
   commitment = null,
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{commitment ? 'Edit commitment' : 'New commitment'}</DialogTitle>
+        </DialogHeader>
+        {open ? (
+          <CommitmentForm
+            key={commitment?.id ?? `new-${threadId ?? 'all'}`}
+            threadId={threadId}
+            people={people}
+            commitment={commitment}
+            onOpenChange={onOpenChange}
+          />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function CommitmentForm({
+  threadId = null,
+  people = [],
+  commitment = null,
+  onOpenChange,
 }) {
   const threads = useThreadStore((state) => state.threads)
   const createCommitment = useCommitmentStore((state) => state.createCommitment)
@@ -39,6 +62,29 @@ export function CommitmentDialog({
   const [targetThreadId, setTargetThreadId] = useState(commitment?.threadId ?? threadId ?? '')
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
+
+  const threadOptions = [
+    { value: '', label: 'Select a thread…' },
+    ...threads
+      .filter((thread) => thread.status === 'active')
+      .map((thread) => ({
+        value: thread.id,
+        label: thread.title,
+      })),
+  ]
+
+  const ownerOptions = [
+    { value: 'me', label: 'Me' },
+    { value: 'person', label: 'Someone else' },
+  ]
+
+  const peopleOptions = [
+    { value: '', label: 'Select a person…' },
+    ...people.map((person) => ({
+      value: person.id,
+      label: person.fullName,
+    })),
+  ]
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -74,111 +120,81 @@ export function CommitmentDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>{editing ? 'Edit commitment' : 'New commitment'}</DialogTitle>
-          <DialogDescription>
-            {editing
-              ? 'Update the promise, owner or due date.'
-              : 'Track a promise with an owner and a due date.'}
-          </DialogDescription>
-        </DialogHeader>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Field label="What was promised?" htmlFor="commitment-description" error={error}>
+        <Input
+          id="commitment-description"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder="e.g. Send the updated delivery timeline"
+          autoFocus
+          maxLength={500}
+          invalid={Boolean(error)}
+        />
+      </Field>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <Field label="What was promised?" htmlFor="commitment-description" error={error}>
-            <Input
-              id="commitment-description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="e.g. Send the updated delivery timeline"
-              autoFocus
-              maxLength={500}
-              invalid={Boolean(error)}
-            />
-          </Field>
+      <Field label="Thread">
+        <SelectMenu
+          value={targetThreadId}
+          onChange={setTargetThreadId}
+          options={threadOptions}
+          disabled={Boolean(threadId)}
+          placeholder="Select a thread…"
+        />
+      </Field>
 
-          <Field label="Thread" htmlFor="commitment-thread">
-            <Select
-              id="commitment-thread"
-              value={targetThreadId}
-              onChange={(event) => setTargetThreadId(event.target.value)}
-              disabled={Boolean(threadId)}
-            >
-              <option value="">Select a thread…</option>
-              {threads
-                .filter((thread) => thread.status === 'active')
-                .map((thread) => (
-                  <option key={thread.id} value={thread.id}>
-                    {thread.title}
-                  </option>
-                ))}
-            </Select>
-          </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Owner">
+          <SelectMenu
+            value={ownerType}
+            onChange={setOwnerType}
+            options={ownerOptions}
+          />
+        </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Owner" htmlFor="commitment-owner">
-              <Select
-                id="commitment-owner"
-                value={ownerType}
-                onChange={(event) => setOwnerType(event.target.value)}
-              >
-                <option value="me">Me</option>
-                <option value="person">Someone else</option>
-              </Select>
-            </Field>
+        <Field label="Due date" htmlFor="commitment-due">
+          <Input
+            id="commitment-due"
+            type="date"
+            value={dueDate}
+            onChange={(event) => setDueDate(event.target.value)}
+          />
+        </Field>
+      </div>
 
-            <Field label="Due date" htmlFor="commitment-due">
-              <Input
-                id="commitment-due"
-                type="date"
-                value={dueDate}
-                onChange={(event) => setDueDate(event.target.value)}
-              />
-            </Field>
-          </div>
+      {ownerType === 'person' ? (
+        <Field label="Who owns it?">
+          <SelectMenu
+            value={ownerPersonId}
+            onChange={setOwnerPersonId}
+            options={peopleOptions}
+            placeholder="Select a person…"
+          />
+        </Field>
+      ) : null}
 
-          {ownerType === 'person' ? (
-            <Field label="Who owns it?" htmlFor="commitment-owner-person">
-              <Select
-                id="commitment-owner-person"
-                value={ownerPersonId}
-                onChange={(event) => setOwnerPersonId(event.target.value)}
-              >
-                <option value="">Select a person…</option>
-                {people.map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {person.fullName}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          ) : null}
+      <div className="flex items-center gap-1.5">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setDueDate(toDateInputValue(endOfTodayIso()))}
+        >
+          Due today
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setDueDate('')}>
+          Clear date
+        </Button>
+      </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setDueDate(toDateInputValue(endOfTodayIso()))}
-            >
-              Due today
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setDueDate('')}>
-              Clear date
-            </Button>
-          </div>
-
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={saving}>
-              {editing ? 'Save changes' : 'Create commitment'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          Cancel
+        </Button>
+        <Button type="submit" loading={saving}>
+          {editing ? 'Save changes' : 'Create commitment'}
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }

@@ -4,7 +4,7 @@ import {
   Note,
   Question,
   Snowflake,
-} from '@phosphor-icons/react'
+} from '@/components/icons'
 import { CAPTURE_TYPE_MAP } from '@/config/constants'
 import { cn } from '@/lib/utils'
 

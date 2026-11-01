@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { NotePencil } from '@phosphor-icons/react'
+import { Plus } from '@/components/icons'
 import { makePersonDetails } from '@/lib/people'
 import { useThreadStore, useUiStore } from '@/store'
+import { PageContainer } from '@/components/layout/PageHeader'
 import { ThreadHeader } from '@/components/thread/ThreadHeader'
 import { TimelineTab } from '@/components/thread/TimelineTab'
 import { ThreadCommitmentsTab } from '@/components/thread/ThreadCommitmentsTab'
@@ -14,7 +15,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/Feedback'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 
 /**
- * Thread detail (Feature 2) - the primary workspace for one relationship.
+ * Thread detail (Feature 2) - full-width primary workspace for a relationship.
  * Four tabs: Timeline (default), Commitments, People and Brief.
  */
 export function ThreadDetailPage() {
@@ -31,7 +32,6 @@ export function ThreadDetailPage() {
   const selectThread = useThreadStore((state) => state.selectThread)
   const [tab, setTab] = useState('timeline')
 
-  // Load whenever the route id changes.
   useEffect(() => {
     selectThread(threadId)
   }, [threadId, selectThread])
@@ -61,29 +61,36 @@ export function ThreadDetailPage() {
   const personDetails = makePersonDetails(commitments)
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <PageContainer>
       <ThreadHeader thread={thread} />
 
-      <div className="mb-3 flex justify-end">
-        <Button size="sm" onClick={() => openQuickCapture(thread.id)}>
-          <NotePencil size={14} weight="bold" />
-          Add capture
-        </Button>
-      </div>
-
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList aria-label="Thread sections">
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="commitments">
-            Commitments
-            <CountBadge value={openCount} />
-          </TabsTrigger>
-          <TabsTrigger value="people">People</TabsTrigger>
-          <TabsTrigger value="brief">Brief</TabsTrigger>
-        </TabsList>
+        {/* Navigation & Action Bar */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList aria-label="Thread sections" className="w-full sm:w-auto">
+            <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            <TabsTrigger value="commitments">
+              Commitments
+              <CountBadge value={openCount} />
+            </TabsTrigger>
+            <TabsTrigger value="people">People</TabsTrigger>
+            <TabsTrigger value="brief">Brief</TabsTrigger>
+          </TabsList>
+
+          <Button size="sm" onClick={() => openQuickCapture(thread.id)} className="shrink-0 gap-1.5 shadow-sm">
+            <Plus size={15} weight="bold" />
+            Add capture
+          </Button>
+        </div>
 
         <TabsContent value="timeline">
-          <TimelineTab timeline={timeline} captures={captures} />
+          <TimelineTab
+            timeline={timeline}
+            captures={captures}
+            commitments={commitments}
+            threadId={thread.id}
+            onRefresh={() => selectThread(thread.id)}
+          />
         </TabsContent>
 
         <TabsContent value="commitments">
@@ -108,6 +115,6 @@ export function ThreadDetailPage() {
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   )
 }

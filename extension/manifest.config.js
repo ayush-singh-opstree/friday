@@ -72,6 +72,11 @@ export default defineManifest({
     'https://*.threadwise.app/*',
     'https://*.vercel.app/*',
     'https://*.railway.app/*',
+    // Local development: the FastAPI backend (backend/run.py) and the Vite dev
+    // server. Extension pages/workers with these host permissions can call the
+    // API cross-origin without CORS headers.
+    'http://localhost:8000/*',
+    'http://127.0.0.1:8000/*',
     'http://localhost:3000/*',
     'http://localhost:5173/*',
   ],

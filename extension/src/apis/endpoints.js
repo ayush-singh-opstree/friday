@@ -21,6 +21,8 @@ export const ENDPOINTS = Object.freeze({
     archive: (threadId) => `/threads/${threadId}/archive`,
     restore: (threadId) => `/threads/${threadId}/restore`,
     snooze: (threadId) => `/threads/${threadId}/snooze`,
+    timeline: (threadId) => `/threads/${threadId}/timeline`,
+    people: (threadId) => `/threads/${threadId}/people`,
   },
 
   captures: {
@@ -45,6 +47,7 @@ export const ENDPOINTS = Object.freeze({
     update: (personId) => `/people/${personId}`,
     remove: (personId) => `/people/${personId}`,
     merge: () => '/people/merge',
+    threads: (personId) => `/people/${personId}/threads`,
   },
 
   ai: {
