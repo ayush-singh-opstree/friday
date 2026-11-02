@@ -46,7 +46,7 @@ function check(name, ok, detail = '') {
 const TOKEN = 'verify-notifications-token'
 const USER = 'user_verify_notifications'
 
-db.registerUser(USER, { email: 'verify@threadwise.app', fullName: 'Verify User' })
+db.registerUser(USER, { email: 'verify@friday.app', fullName: 'Verify User' })
 db.registerSession(TOKEN, USER)
 
 const call = (method, path, options = {}) =>

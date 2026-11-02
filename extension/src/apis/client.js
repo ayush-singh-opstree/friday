@@ -1,5 +1,5 @@
 /**
- * HTTP client for the Threadwise API.
+ * HTTP client for the Friday API.
  *
  * Responsibilities:
  *  - attach the bearer token from `src/auth/tokenStore`

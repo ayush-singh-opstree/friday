@@ -1,8 +1,8 @@
 /**
- * Design tokens for Threadwise Companion.
+ * Design tokens for Friday Companion.
  *
  * Every token here is lifted from docs/07_design_system.md so the extension
- * looks and behaves like the Threadwise web app. Defining them through
+ * looks and behaves like the Friday web app. Defining them through
  * Tailwind v4's `@theme` also generates matching utilities, e.g.
  *   --color-primary  ->  bg-primary / text-primary / border-primary
  *   --color-line     ->  border-line

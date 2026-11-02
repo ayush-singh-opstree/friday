@@ -11,7 +11,7 @@
  */
 import Dexie from 'dexie'
 
-export const offlineDb = new Dexie('threadwise-offline')
+export const offlineDb = new Dexie('friday-offline')
 
 offlineDb.version(1).stores({
   threads: 'id, status, lastInteractionAt, attentionScore, isPinned',

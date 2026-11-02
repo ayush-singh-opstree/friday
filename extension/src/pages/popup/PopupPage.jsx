@@ -29,7 +29,7 @@ export function PopupPage() {
       <header className="flex items-center justify-between border-b border-line bg-card/95 px-3.5 py-2 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Logo size={22} />
-          <span className="text-small font-bold text-ink tracking-tight">Threadwise</span>
+          <span className="text-small font-bold text-ink tracking-tight">Friday</span>
         </div>
         <div className="flex items-center gap-1.5">
           {activeSession ? (
@@ -51,7 +51,7 @@ export function PopupPage() {
       </header>
 
       <ProtectedView
-        title="Sign in to Threadwise"
+        title="Sign in to Friday"
         description="Capture context and track commitments from any page without switching tabs."
       >
         <ThreadSessionFlow onOpenCompanion={openSidePanel} />

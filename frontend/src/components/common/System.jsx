@@ -17,7 +17,7 @@ export class ErrorBoundary extends Component {
 
   componentDidCatch(error, info) {
     // Keep the details in the console for debugging without surfacing them.
-    console.error('[Threadwise] Unhandled UI error', error, info?.componentStack)
+    console.error('[Friday] Unhandled UI error', error, info?.componentStack)
   }
 
   render() {
@@ -27,9 +27,9 @@ export class ErrorBoundary extends Component {
       <div className="flex min-h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
         <h1 className="text-heading-1 text-ink">Something went wrong</h1>
         <p className="max-w-md text-small text-ink-muted">
-          Threadwise hit an unexpected error. Your captures are safe — reloading usually fixes it.
+          Friday hit an unexpected error. Your captures are safe — reloading usually fixes it.
         </p>
-        <Button onClick={() => window.location.reload()}>Reload Threadwise</Button>
+        <Button onClick={() => window.location.reload()}>Reload Friday</Button>
       </div>
     )
   }

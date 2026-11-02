@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Threadwise - the relationship memory app for professionals.",
+  "description": "Friday - the relationship memory app for professionals.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

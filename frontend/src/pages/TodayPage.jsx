@@ -92,7 +92,7 @@ export function TodayPage() {
       ) : isEmpty ? (
         <EmptyState
           icon={<Sparkle size={24} weight="duotone" />}
-          title="Welcome to Threadwise"
+          title="Welcome to Friday"
           description="Create your first thread to start tracking relationships and commitments."
           action={
             <Link to="/threads">

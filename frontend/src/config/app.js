@@ -2,19 +2,19 @@ import { version } from '../../package.json'
 
 /** Static product metadata used in headers, Settings and the About panel. */
 export const APP = Object.freeze({
-  name: 'Threadwise',
+  name: 'Friday',
   tagline: 'The relationship memory layer for professionals',
   version,
   /** Absolute URL builder for shareable web-app links. */
   url: (path = '') => {
     const base =
-      typeof window !== 'undefined' ? window.location.origin : 'https://threadwise.app'
+      typeof window !== 'undefined' ? window.location.origin : 'https://friday.app'
     return path ? `${base}/${String(path).replace(/^\/+/, '')}` : base
   },
   links: {
-    privacy: 'https://threadwise.app/privacy',
-    support: 'https://threadwise.app/support',
-    changelog: 'https://threadwise.app/changelog',
+    privacy: 'https://friday.app/privacy',
+    support: 'https://friday.app/support',
+    changelog: 'https://friday.app/changelog',
   },
 })
 

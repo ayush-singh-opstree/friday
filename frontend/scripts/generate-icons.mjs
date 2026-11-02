@@ -2,7 +2,7 @@
  * Generates the PWA icons as real PNG files (Chrome and iOS require bitmaps).
  *
  * Zero dependencies: a tiny PNG encoder (IHDR/IDAT/IEND + CRC32 + zlib deflate)
- * rasterises the Threadwise mark - a brand-blue rounded tile with three white
+ * rasterises the Friday mark - a brand-blue rounded tile with three white
  * "thread" bars.
  *
  * Usage: npm run icons

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Seed dataset (docs/10_pitch_playbook.md -> seed data spec).
  *
  * Tells the Meera story from docs/04_personas_journeys.md:
@@ -15,14 +15,14 @@ import { isoTimestamp } from './clock'
 
 export const DEMO_USER_ID = 'usr_meera'
 export const DEMO_CREDENTIALS = {
-  email: 'meera@demo.threadwise.app',
-  password: 'threadwise',
+  email: 'meera@demo.friday.app',
+  password: 'friday',
 }
 
 /** A second demo account, used to prove per-user isolation. */
 export const SECONDARY_CREDENTIALS = {
-  email: 'arjun@demo.threadwise.app',
-  password: 'threadwise',
+  email: 'arjun@demo.friday.app',
+  password: 'friday',
 }
 
 export const DEFAULT_PROFILE = {
@@ -66,7 +66,7 @@ export function profileForEmail(email) {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
 
-  return { ...DEFAULT_PROFILE, fullName: name || 'Threadwise User' }
+  return { ...DEFAULT_PROFILE, fullName: name || 'Friday User' }
 }
 
 const TS = isoTimestamp()

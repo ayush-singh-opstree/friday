@@ -151,8 +151,6 @@ export const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
 export const DEFAULT_SETTINGS = Object.freeze({
   theme: 'system', // system | light | dark
   injectCompanion: true,
-  detectOnLinkedIn: true,
-  detectOnGmail: true,
   autoOpenPanel: false,
   goingColdThresholdDays: DEFAULT_GOING_COLD_DAYS,
   digestTime: '08:00',

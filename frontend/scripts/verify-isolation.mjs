@@ -42,12 +42,12 @@ check('No token -> 401', status, 401)
 
 /* 2. Two independent accounts sign in. */
 const a = await call(null, 'POST', '/auth/login', {
-  email: 'meera@demo.threadwise.app',
-  password: 'threadwise',
+  email: 'meera@demo.friday.app',
+  password: 'friday',
 })
 const b = await call(null, 'POST', '/auth/login', {
-  email: 'arjun@demo.threadwise.app',
-  password: 'threadwise',
+  email: 'arjun@demo.friday.app',
+  password: 'friday',
 })
 
 check('Two accounts get distinct tokens', a.accessToken !== b.accessToken, true)

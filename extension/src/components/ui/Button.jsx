@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { Spinner } from './Spinner'
 
 /**
- * Button component for Threadwise Companion.
+ * Button component for Friday Companion.
  * Variants: primary | secondary | ghost | outline | danger
  * Sizes: sm (32px) | md (40px) | lg (48px) | icon
  */

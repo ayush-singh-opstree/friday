@@ -21,7 +21,7 @@ function demoSession(email) {
     expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     user: {
       id: '00000000-0000-0000-0000-000000000001',
-      email: email || 'meera@threadwise.app',
+      email: email || 'meera@friday.app',
       fullName: 'Meera Krishnamurthy',
       plan: 'pro',
       role: 'owner',

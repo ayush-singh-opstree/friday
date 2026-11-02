@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
  * Data-source indicator.
  *
  * Makes it obvious whether the app is reading from the bundled demo dataset
- * (`src/mocks`) or the live Threadwise REST backend
+ * (`src/mocks`) or the live Friday REST backend
  * (docs/08_system_architecture.md). Shown in the app shell and on sign-in so a
  * demo audience always knows which source is in play.
  */

@@ -1,5 +1,5 @@
 /**
- * HTTP client for the Threadwise API.
+ * HTTP client for the Friday API.
  *
  * Owns bearer-token attachment, query serialisation, timeouts, error
  * normalisation and the demo-mode switch that resolves requests against

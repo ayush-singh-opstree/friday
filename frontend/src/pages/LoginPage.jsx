@@ -16,8 +16,8 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [email, setEmail] = useState('meera@demo.threadwise.app')
-  const [password, setPassword] = useState('threadwise')
+  const [email, setEmail] = useState('meera@demo.friday.app')
+  const [password, setPassword] = useState('friday')
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
 
@@ -63,7 +63,7 @@ export function LoginPage() {
             <Logo size={28} className="[&_rect:first-child]:fill-transparent [&_rect:first-child]:hidden" />
           </div>
           <div className="text-center">
-            <h1 className="text-heading-1 font-bold text-ink">Threadwise</h1>
+            <h1 className="text-heading-1 font-bold text-ink">Friday</h1>
             <p className="mt-0.5 text-small text-ink-muted">Relationship memory for professionals</p>
           </div>
         </div>
@@ -115,7 +115,7 @@ export function LoginPage() {
               <p className="text-small text-ink">
                 <strong>Demo mode.</strong> Any credentials work — try{' '}
                 <code className="rounded bg-primary/10 px-1 py-0.5 font-mono text-tiny">
-                  meera@demo.threadwise.app
+                  meera@demo.friday.app
                 </code>
               </p>
             </div>

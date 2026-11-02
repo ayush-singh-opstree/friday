@@ -1,6 +1,6 @@
 /* eslint-env serviceworker */
 /**
- * Threadwise offline app-shell service worker (Phase 1 -> "Offline support").
+ * Friday offline app-shell service worker (Phase 1 -> "Offline support").
  *
  * Strategy (docs/08_system_architecture.md -> Service Worker Strategy):
  *   - navigations  : network-first, falling back to the cached app shell
@@ -8,7 +8,7 @@
  *   - API calls    : never cached here; the app owns its own IndexedDB layer
  */
 
-const CACHE = 'threadwise-shell-v1'
+const CACHE = 'friday-shell-v1'
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg']
 
 self.addEventListener('install', (event) => {

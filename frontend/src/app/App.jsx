@@ -3,7 +3,7 @@ import { AppProviders } from './AppProviders'
 import { AppRoutes } from './routes'
 
 /**
- * Threadwise application root.
+ * Friday application root.
  * Providers -> router -> routes. Kept intentionally thin so tests can mount
  * `AppRoutes` with a memory router.
  */

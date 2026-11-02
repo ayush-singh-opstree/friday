@@ -21,7 +21,7 @@ const THEME_OPTIONS = [
 ]
 
 /**
- * Options page for Threadwise Companion.
+ * Options page for Friday Companion.
  */
 export function OptionsPage() {
   const [section, setSection] = useState('account')
@@ -179,7 +179,7 @@ function AccountSection() {
     <Card className="p-6">
       <SectionHeader label="Account Overview" />
       <p className="text-small text-ink-muted leading-relaxed">
-        Signed in as <strong className="text-ink">{user?.fullName ?? '—'}</strong> ({user?.email ?? '—'}). Full account deletion, profile editing, and JSON data exports can be accessed anytime from the main Threadwise web application.
+        Signed in as <strong className="text-ink">{user?.fullName ?? '—'}</strong> ({user?.email ?? '—'}). Full account deletion, profile editing, and JSON data exports can be accessed anytime from the main Friday web application.
       </p>
       <div className="mt-5 flex items-center border-t border-line pt-4">
         <Button
@@ -199,7 +199,7 @@ function AccountSection() {
 function AboutSection() {
   return (
     <Card className="p-6">
-      <SectionHeader label="About Threadwise Companion" />
+      <SectionHeader label="About Friday Companion" />
       <div className="flex flex-col divide-y divide-line text-small">
         <div className="flex justify-between items-center py-3">
           <span className="font-medium text-ink-muted">Companion Version</span>
@@ -211,7 +211,7 @@ function AboutSection() {
         </div>
       </div>
       <p className="mt-4 text-tiny text-ink-subtle">
-        Threadwise Companion seamlessly surfaces relationship context from your threads directly inside LinkedIn and Gmail without breaking your workflow.
+        Friday Companion seamlessly surfaces relationship context from your threads directly inside LinkedIn and Gmail without breaking your workflow.
       </p>
     </Card>
   )

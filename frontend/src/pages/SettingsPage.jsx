@@ -370,7 +370,7 @@ function CaptureSection() {
 
       <Pane
         title="Editor & Shortcuts"
-        description="Shortcuts that work anywhere in Threadwise while you are capturing or searching."
+        description="Shortcuts that work anywhere in Friday while you are capturing or searching."
       >
         <SwitchRow
           id="shortcuts-enabled"
@@ -511,7 +511,7 @@ function DataSection() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `threadwise-export-${new Date().toISOString().slice(0, 10)}.json`
+      link.download = `friday-export-${new Date().toISOString().slice(0, 10)}.json`
       link.click()
       URL.revokeObjectURL(url)
       pushToast('Your data was exported.', 'success')
@@ -586,7 +586,7 @@ function AboutSection() {
 
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <Pane title="About Threadwise" description={APP.tagline}>
+      <Pane title="About Friday" description={APP.tagline}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {buildInfo.map(({ label, value }) => (
             <div key={label} className="rounded-xl border border-line/70 bg-overlay/40 px-3.5 py-3">

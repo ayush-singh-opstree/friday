@@ -1,7 +1,7 @@
-# Threadwise — Web App (`frontend/`)
+# Friday — Web App (`frontend/`)
 
 > **The relationship memory layer for professionals.**
-> Threadwise holds the context of every important professional relationship — what was said,
+> Friday holds the context of every important professional relationship — what was said,
 > what was promised, and what needs to happen next — so nothing gets lost between meetings,
 > emails and chats.
 
@@ -70,7 +70,7 @@ To point at a *different* backend, copy the template and edit the URL:
 
 ```bash
 cp .env.example .env.local
-# VITE_API_BASE_URL=https://api.threadwise.app
+# VITE_API_BASE_URL=https://api.friday.app
 # VITE_USE_MOCK_API=false
 ```
 

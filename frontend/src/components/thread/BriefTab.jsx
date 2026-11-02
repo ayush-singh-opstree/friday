@@ -79,7 +79,7 @@ export function BriefTab({ thread, summaries = [], captures = [], commitments = 
         <EmptyState
           icon={<Robot size={26} weight="duotone" />}
           title="AI briefs are a Pro feature"
-          description="Upgrade to Threadwise Pro to generate Where We Left Off summaries and Pre-Meeting Briefs."
+          description="Upgrade to Friday Pro to generate Where We Left Off summaries and Pre-Meeting Briefs."
         />
       }
     >

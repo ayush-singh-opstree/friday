@@ -2,7 +2,7 @@ import { defineManifest } from '@crxjs/vite-plugin'
 import pkg from './package.json' with { type: 'json' }
 
 /**
- * Manifest V3 definition for the Threadwise Companion extension.
+ * Manifest V3 definition for the Friday Companion extension.
  * CRXJS resolves the source paths below, bundles each entry point and
  * rewrites them to the hashed output files inside `dist/`.
  *
@@ -17,7 +17,7 @@ import pkg from './package.json' with { type: 'json' }
  */
 export default defineManifest({
   manifest_version: 3,
-  name: 'Threadwise Companion',
+  name: 'Friday Companion',
   version: pkg.version,
   description: pkg.description,
   icons: {
@@ -27,7 +27,7 @@ export default defineManifest({
     128: 'public/icons/icon128.png',
   },
   action: {
-    default_title: 'Threadwise Companion',
+    default_title: 'Friday Companion',
     default_popup: 'src/pages/popup/index.html',
     default_icon: {
       16: 'public/icons/icon16.png',
@@ -67,9 +67,9 @@ export default defineManifest({
     'alarms',
   ],
   host_permissions: [
-    // Threadwise API + web app (see docs/08_system_architecture.md).
-    'https://threadwise.app/*',
-    'https://*.threadwise.app/*',
+    // Friday API + web app (see docs/08_system_architecture.md).
+    'https://friday.app/*',
+    'https://*.friday.app/*',
     'https://*.vercel.app/*',
     'https://*.railway.app/*',
     // Local development: the FastAPI backend (backend/run.py) and the Vite dev

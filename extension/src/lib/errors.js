@@ -28,7 +28,7 @@ export class ApiError extends Error {
 
 /** Error raised when the user is not authenticated for a protected action. */
 export class AuthError extends Error {
-  constructor(message = 'You need to sign in to Threadwise to continue.') {
+  constructor(message = 'You need to sign in to Friday to continue.') {
     super(message)
     this.name = 'AuthError'
   }

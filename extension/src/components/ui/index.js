@@ -1,5 +1,5 @@
 /**
- * UI primitive barrel - the design-system kit for Threadwise Companion.
+ * UI primitive barrel - the design-system kit for Friday Companion.
  * Tokens live in `src/styles/theme.css`; every component here consumes them.
  */
 export { Button, IconButton } from './Button'

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Threadwise Companion - a browser extension that surfaces relationship context from your Threadwise threads on LinkedIn, Gmail and anywhere you work.",
+  "description": "Friday Companion - a browser extension that surfaces relationship context from your Friday threads on LinkedIn, Gmail and anywhere you work.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

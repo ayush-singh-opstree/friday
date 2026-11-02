@@ -84,6 +84,27 @@ const SESSION_TONES = [
   },
 ]
 
+/** Stable display order for the capture groups shown inside a session. */
+const SESSION_TYPE_ORDER = ['decision', 'commitment', 'follow_up', 'question', 'note']
+
+const SESSION_TYPE_LABELS = {
+  decision: 'Decisions',
+  commitment: 'Commitments',
+  follow_up: 'Follow-ups',
+  question: 'Questions',
+  note: 'Notes',
+}
+
+/** Bullet colour per capture type inside a session group card. */
+const SESSION_TYPE_DOTS = {
+  note: 'bg-[#4F6AF5]',
+  action: 'bg-[#E67E22]',
+  follow_up: 'bg-[#E67E22]',
+  commitment: 'bg-[#E67E22]',
+  decision: 'bg-[#27AE60]',
+  question: 'bg-[#E91E63]',
+}
+
 /**
  * Modern Interactive Timeline Feed (Feature 2 -> Thread Detail).
  * Displays a chronological feed of notes, actions, decisions, commitments,
@@ -656,35 +677,53 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy, inSession =
         </span>
 
         {/* Capture Event Card */}
-        <div className="w-full rounded-2xl border border-line/80 bg-card p-4 shadow-xs transition-all hover:border-primary/40 hover:shadow-sm">
-          {/* Header Row */}
-          <div className="mb-2.5 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <CaptureTypeChip type={type} />
-              <span className="flex items-center gap-1 text-tiny text-ink-subtle">
-                <Clock size={11} />
-                {time}
-              </span>
+        {inSession ? (
+          // Inside a session the type/time live in the group header, so each row
+          // is a compact tile with the copy action revealed on hover.
+          <div className="group/row flex w-full items-start gap-2 rounded-xl border border-line/70 bg-card px-3 py-2.5 transition-colors hover:border-line">
+            <div className={cn('min-w-0 flex-1 text-[14px] leading-relaxed', contentClass)}>
+              {content}
+            </div>
+            <button
+              type="button"
+              onClick={() => onCopy(content, capture?.id ?? event.id)}
+              title="Copy note content"
+              className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-subtle opacity-0 transition-all hover:bg-overlay hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100"
+            >
+              {isCopied ? <Check size={12} className="text-emerald-500" /> : <CopySimple size={12} />}
+            </button>
+          </div>
+        ) : (
+          <div className="w-full rounded-2xl border border-line/80 bg-card p-4 shadow-xs transition-all hover:border-primary/40 hover:shadow-sm">
+            {/* Header Row */}
+            <div className="mb-2.5 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CaptureTypeChip type={type} />
+                <span className="flex items-center gap-1 text-tiny text-ink-subtle">
+                  <Clock size={11} />
+                  {time}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {capture ? <SyncBadge status={capture.syncStatus} /> : null}
+                <button
+                  type="button"
+                  onClick={() => onCopy(content, capture?.id ?? event.id)}
+                  title="Copy note content"
+                  className="inline-flex size-6 items-center justify-center rounded-md text-ink-subtle opacity-70 transition-all hover:bg-overlay hover:text-ink hover:opacity-100"
+                >
+                  {isCopied ? <Check size={12} className="text-emerald-500" /> : <CopySimple size={12} />}
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {capture ? <SyncBadge status={capture.syncStatus} /> : null}
-              <button
-                type="button"
-                onClick={() => onCopy(content, capture?.id ?? event.id)}
-                title="Copy note content"
-                className="inline-flex size-6 items-center justify-center rounded-md text-ink-subtle opacity-70 transition-all hover:bg-overlay hover:text-ink hover:opacity-100"
-              >
-                {isCopied ? <Check size={12} className="text-emerald-500" /> : <CopySimple size={12} />}
-              </button>
+            {/* Content Body */}
+            <div className={cn('text-[14px] leading-relaxed', contentClass)}>
+              {content}
             </div>
           </div>
-
-          {/* Content Body */}
-          <div className={cn('text-[14px] leading-relaxed', contentClass)}>
-            {content}
-          </div>
-        </div>
+        )}
       </li>
     )
   }
@@ -810,6 +849,28 @@ function ClubTimelineBlock({
     (event) => event.type === 'subthread_added' || event.type === 'capture_added',
   ).length
 
+  // Group the session's captures by type so e.g. three notes render together in a
+  // single card. Non-capture events (rare inside a session) fall back to rows.
+  const captureEvents = contentEvents.filter(
+    (event) => event.type === 'subthread_added' || event.type === 'capture_added',
+  )
+  const otherEvents = contentEvents.filter(
+    (event) => event.type !== 'subthread_added' && event.type !== 'capture_added',
+  )
+
+  const groupedContent = (() => {
+    const byType = new Map()
+    for (const event of captureEvents) {
+      const capture = captureById.get(event.referenceId)
+      const type = capture?.type || event.metadata?.type || 'note'
+      if (!byType.has(type)) byType.set(type, [])
+      byType.get(type).push(event)
+    }
+    const known = SESSION_TYPE_ORDER.filter((type) => byType.has(type))
+    const extras = [...byType.keys()].filter((type) => !SESSION_TYPE_ORDER.includes(type))
+    return [...known, ...extras].map((type) => ({ type, events: byType.get(type) }))
+  })()
+
   const rawName = club?.name || fallbackName || ''
   const name = rawName && !/^undefined\b/i.test(rawName) ? rawName : 'Meeting session'
 
@@ -890,36 +951,86 @@ function ClubTimelineBlock({
           )}
         </header>
 
-        {/* Captures recorded during this session */}
-        <div className="relative py-3 pr-3 pl-4">
+        {/* Captures recorded during this session, one card per capture type */}
+        <div className="py-3 pr-3 pl-4">
           {contentEvents.length === 0 ? (
             <p className="text-tiny text-ink-subtle">No captures in this session.</p>
           ) : (
-            <>
-              {contentEvents.length > 1 ? (
-                // Connector that threads the session's timeline nodes together.
-                <span
-                  className={cn(
-                    'pointer-events-none absolute top-5 bottom-5 left-[35px] w-px -translate-x-1/2 sm:left-[38px]',
-                    palette.connector,
-                  )}
-                  aria-hidden="true"
-                />
+            <div className="flex flex-col gap-3">
+              {groupedContent.map((group) => (
+                <section key={group.type}>
+                  <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] text-ink-subtle uppercase">
+                    {SESSION_TYPE_LABELS[group.type] ?? group.type}
+                    <span className="rounded-full bg-overlay px-1.5 py-0.5 text-[10px] font-bold text-ink-muted">
+                      {group.events.length}
+                    </span>
+                  </p>
+
+                  <ul className="divide-y divide-line/60 overflow-hidden rounded-xl border border-line/70 bg-card">
+                    {group.events.map((event) => {
+                      const capture = captureById.get(event.referenceId)
+                      const content =
+                        capture?.content ||
+                        event.metadata?.content ||
+                        event.metadata?.content_snippet ||
+                        'Note added to thread'
+                      const rowId = capture?.id ?? event.id
+
+                      return (
+                        <li
+                          key={event.id}
+                          className="group/row flex items-start gap-2.5 px-3 py-2.5"
+                        >
+                          <span
+                            className={cn(
+                              'mt-[7px] size-1.5 shrink-0 rounded-full',
+                              SESSION_TYPE_DOTS[group.type] ?? 'bg-ink-subtle',
+                            )}
+                            aria-hidden="true"
+                          />
+                          <p
+                            className={cn(
+                              'min-w-0 flex-1 text-[13.5px] leading-relaxed text-ink',
+                              group.type === 'decision' && 'font-medium',
+                            )}
+                          >
+                            {content}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => onCopy(content, rowId)}
+                            title="Copy content"
+                            className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-subtle opacity-0 transition-all hover:bg-overlay hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100"
+                          >
+                            {copiedId === rowId ? (
+                              <Check size={12} className="text-emerald-500" />
+                            ) : (
+                              <CopySimple size={12} />
+                            )}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </section>
+              ))}
+
+              {otherEvents.length > 0 ? (
+                <ol className="relative flex flex-col gap-2">
+                  {otherEvents.map((event) => (
+                    <TimelineRow
+                      key={event.id}
+                      event={event}
+                      capture={captureById.get(event.referenceId)}
+                      commitment={commitmentById.get(event.referenceId)}
+                      isCopied={copiedId === (captureById.get(event.referenceId)?.id ?? event.id)}
+                      onCopy={onCopy}
+                      inSession
+                    />
+                  ))}
+                </ol>
               ) : null}
-              <ol className="relative flex flex-col gap-3">
-                {contentEvents.map((event) => (
-                  <TimelineRow
-                    key={event.id}
-                    event={event}
-                    capture={captureById.get(event.referenceId)}
-                    commitment={commitmentById.get(event.referenceId)}
-                    isCopied={copiedId === (captureById.get(event.referenceId)?.id ?? event.id)}
-                    onCopy={onCopy}
-                    inSession
-                  />
-                ))}
-              </ol>
-            </>
+            </div>
           )}
         </div>
       </div>

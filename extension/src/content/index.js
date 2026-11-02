@@ -72,8 +72,8 @@ function renderPill(context) {
   const pill = document.createElement('button')
   pill.id = PILL_ID
   pill.type = 'button'
-  pill.title = `Open Threadwise context for ${context.name}`
-  pill.setAttribute('aria-label', `Open Threadwise context for ${context.name}`)
+  pill.title = `Open Friday context for ${context.name}`
+  pill.setAttribute('aria-label', `Open Friday context for ${context.name}`)
 
   // Inline styles only: immune to host-page CSS
   Object.assign(pill.style, {
@@ -127,7 +127,7 @@ function renderPill(context) {
   })
 
   const label = document.createElement('span')
-  label.textContent = `Threadwise · ${context.name.split(' ')[0]}`
+  label.textContent = `Friday · ${context.name.split(' ')[0]}`
 
   pill.append(dot, label)
   pill.addEventListener('click', async () => {

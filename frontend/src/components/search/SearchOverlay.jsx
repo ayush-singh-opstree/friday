@@ -138,7 +138,7 @@ export function SearchOverlay() {
       className="fixed inset-0 z-100 flex items-start justify-center bg-black/50 p-4 pt-[10vh] backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      aria-label="Search Threadwise"
+      aria-label="Search Friday"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

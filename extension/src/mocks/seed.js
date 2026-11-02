@@ -12,8 +12,8 @@ import { isoTimestamp } from './clock'
 
 export const DEMO_USER_ID = 'usr_meera'
 export const DEMO_CREDENTIALS = {
-  email: 'meera@demo.threadwise.app',
-  password: 'threadwise',
+  email: 'meera@demo.friday.app',
+  password: 'friday',
 }
 
 /** Stable, readable userId derived from an email address. */
@@ -37,7 +37,7 @@ export function profileForEmail(email) {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
 
-  return { fullName: name || 'Threadwise User' }
+  return { fullName: name || 'Friday User' }
 }
 
 const TS = isoTimestamp()

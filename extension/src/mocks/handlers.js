@@ -28,7 +28,7 @@ const LATENCY_MS = 140
 function requireUser() {
   const db = getDb()
   if (!db.user) {
-    throw new ApiError('You need to sign in to Threadwise.', { status: 401, code: 'unauthorized' })
+    throw new ApiError('You need to sign in to Friday.', { status: 401, code: 'unauthorized' })
   }
   return db.user
 }
@@ -943,7 +943,7 @@ export async function handleMockRequest({ method = 'GET', path, body, query, tok
     // workspace is bound to that user, so cross-user reads are impossible.
     const userId = await resolveSession(token)
     if (!userId) {
-      throw new ApiError('You need to sign in to Threadwise.', { status: 401, code: 'unauthorized' })
+      throw new ApiError('You need to sign in to Friday.', { status: 401, code: 'unauthorized' })
     }
     activate(userId)
     await loadDb()

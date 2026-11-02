@@ -1,5 +1,5 @@
 /**
- * Generates the Threadwise Companion extension icons as real PNG files.
+ * Generates the Friday Companion extension icons as real PNG files.
  *
  * Chrome requires bitmap action icons (SVG is not supported), so this script
  * rasterises the brand mark with a tiny zero-dependency PNG encoder:

@@ -1,6 +1,6 @@
-# Threadwise Companion — Browser Extension (`extension/`)
+# Friday Companion — Browser Extension (`extension/`)
 
-The **helper** companion for the Threadwise web app. It surfaces relationship context while you
+The **helper** companion for the Friday web app. It surfaces relationship context while you
 work in the browser — on a LinkedIn profile, in a Gmail thread, or mid-conversation.
 
 > This is a separate codebase from [`../frontend`](../frontend) (the website). They share **one
@@ -18,7 +18,7 @@ Per [`../docs/09_release_plan.md`](../docs/09_release_plan.md) it ships in **Pha
 | Popup | `src/pages/popup/` | Top-3 attention threads + Quick Capture (type, thread, commitment detection) + theme toggle |
 | Side panel | `src/pages/sidepanel/` | "On this page" (matched person, their threads + open commitments, capture), People, Search, Today, Capture + theme toggle |
 | Options | `src/pages/options/` | Account, Connection (data source, sign out, reset demo), **Appearance (theme)**, Detection, Notifications, Privacy, About |
-| Background | `src/background/index.js` | Context menu "Capture to Threadwise", page-context relay, hourly badge sync |
+| Background | `src/background/index.js` | Context menu "Capture to Friday", page-context relay, hourly badge sync |
 | Content script | `src/content/index.js` | Detects the person on LinkedIn/Gmail, publishes context, floating launcher pill |
 
 **Privacy contract (from the spec):** the content script reads *only* a display name, an optional

@@ -1,4 +1,4 @@
-/** The Threadwise mark: brand tile with three "thread" bars. */
+/** The Friday mark: brand tile with three "thread" bars. */
 export function Logo({ size = 28, className }) {
   return (
     <svg
@@ -7,7 +7,7 @@ export function Logo({ size = 28, className }) {
       viewBox="0 0 64 64"
       className={className}
       role="img"
-      aria-label="Threadwise"
+      aria-label="Friday"
     >
       <rect width="64" height="64" rx="15" fill="var(--color-primary)" />
       <rect x="16" y="19" width="33" height="7" rx="3.5" fill="#fff" />
@@ -22,7 +22,7 @@ export function Wordmark({ size = 26, className }) {
   return (
     <div className={`flex items-center gap-2 ${className ?? ''}`}>
       <Logo size={size} />
-      <span className="text-heading-3 font-semibold tracking-tight text-ink">Threadwise</span>
+      <span className="text-heading-3 font-semibold tracking-tight text-ink">Friday</span>
     </div>
   )
 }

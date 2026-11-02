@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-/** The Threadwise mark: brand tile with three "thread" bars. */
+/** The Friday mark: brand tile with three "thread" bars. */
 export function Logo({ size = 28, className }) {
   return (
     <svg
@@ -9,7 +9,7 @@ export function Logo({ size = 28, className }) {
       viewBox="0 0 64 64"
       className={cn('shrink-0', className)}
       role="img"
-      aria-label="Threadwise"
+      aria-label="Friday"
     >
       <rect width="64" height="64" rx="15" fill="var(--color-primary)" />
       <rect x="16" y="19" width="33" height="7" rx="3.5" fill="#fff" />
@@ -26,7 +26,7 @@ export function Wordmark({ size = 28, className, showTagline = false }) {
       <Logo size={size} />
       <div className="leading-tight">
         <span className="block text-heading-2 font-semibold tracking-tight text-ink">
-          Threadwise
+          Friday
         </span>
         {showTagline ? (
           <span className="block text-tiny text-ink-muted">Relationship memory</span>

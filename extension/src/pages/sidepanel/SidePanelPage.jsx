@@ -39,11 +39,11 @@ import { cn } from '@/lib/utils'
 import { ThreadSessionFlow } from '@/components/threads/ThreadSessionFlow'
 
 /**
- * Side panel - Threadwise Companion.
+ * Side panel - Friday Companion.
  * Clean contextual companion:
  * - Removed Page scraping feature.
  * - Removed Needs Attention.
- * - Focused on Threads & Capture Sessions, People Directory, Search, and Quick Capture.
+ * - Focused on Threads, People Directory, Search, and Quick Capture.
  */
 export function SidePanelPage() {
   const activeSession = useUiStore((state) => state.activeSession)
@@ -61,7 +61,7 @@ export function SidePanelPage() {
       <header className="flex items-center justify-between border-b border-line bg-card/95 px-3.5 py-2 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Logo size={22} />
-          <span className="text-small font-bold text-ink tracking-tight">Threadwise Companion</span>
+          <span className="text-small font-bold text-ink tracking-tight">Friday Companion</span>
         </div>
         <div className="flex items-center gap-1.5">
           {activeSession ? (
@@ -82,7 +82,7 @@ export function SidePanelPage() {
         </div>
       </header>
 
-      <ProtectedView title="Sign in to Threadwise">
+      <ProtectedView title="Sign in to Friday">
         <SidePanelBody />
       </ProtectedView>
     </div>
@@ -97,7 +97,7 @@ function SidePanelBody() {
     <div className="flex flex-1 flex-col gap-3.5 p-3.5">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList aria-label="Companion sections" className="p-1">
-          <TabsTrigger value="threads">Threads & Session</TabsTrigger>
+          <TabsTrigger value="threads">Thread</TabsTrigger>
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="search">Search</TabsTrigger>
           <TabsTrigger value="capture">Quick Capture</TabsTrigger>
@@ -234,7 +234,7 @@ function PeoplePanel() {
           ))}
         </div>
       ) : list.length === 0 ? (
-        <EmptyState title="No people" description="Add people from the Threadwise web app." />
+        <EmptyState title="No people" description="Add people from the Friday web app." />
       ) : (
         <ul className="flex flex-col gap-1">
           {list.slice(0, 25).map((person) => (

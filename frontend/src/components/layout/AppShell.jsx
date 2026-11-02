@@ -143,7 +143,7 @@ export function AppShell({ children }) {
           >
             <Link
               to="/today"
-              aria-label="Threadwise home"
+              aria-label="Friday home"
               className={cn(
                 'flex items-center justify-center',
                 collapsed && 'size-11 group-hover/nav:hidden mx-auto',

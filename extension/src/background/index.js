@@ -2,7 +2,7 @@
  * MV3 background service worker.
  *
  * Responsibilities:
- *  - own the centred "Capture to Threadwise" context menu
+ *  - own the centred "Capture to Friday" context menu
  *  - answer PAGE_CONTEXT requests from content scripts and the side panel
  *  - keep the toolbar badge in sync with open commitments (hourly alarm)
  *
@@ -23,7 +23,7 @@ const BADGE_ALARM = 'threadwise:badge'
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'threadwise-capture',
-    title: 'Capture to Threadwise',
+    title: 'Capture to Friday',
     contexts: ['selection', 'page'],
   })
 

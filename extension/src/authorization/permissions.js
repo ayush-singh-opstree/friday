@@ -115,14 +115,14 @@ export function isWithinLimit(user, resource, currentCount) {
 export function capabilityLabel(capability) {
   switch (capability) {
     case CAPABILITIES.COMPANION:
-      return 'The companion overlay is part of Threadwise Pro.'
+      return 'The companion overlay is part of Friday Pro.'
     case CAPABILITIES.AI_SUMMARY:
-      return 'AI summaries ("Where We Left Off") are part of Threadwise Pro.'
+      return 'AI summaries ("Where We Left Off") are part of Friday Pro.'
     case CAPABILITIES.AI_BRIEF:
-      return 'Pre-Meeting Briefs are part of Threadwise Pro.'
+      return 'Pre-Meeting Briefs are part of Friday Pro.'
     case CAPABILITIES.PEOPLE_MERGE:
       return 'Merging duplicate people requires write access.'
     default:
-      return 'Upgrade to Threadwise Pro to unlock this.'
+      return 'Upgrade to Friday Pro to unlock this.'
   }
 }

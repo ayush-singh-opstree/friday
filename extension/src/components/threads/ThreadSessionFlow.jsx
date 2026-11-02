@@ -28,9 +28,8 @@ import {
 } from '@/components/ui'
 import { usePeople, useThreads } from '@/hooks'
 import { clubsApi } from '@/apis'
-import { useCaptureStore, useThreadStore, useUiStore } from '@/store'
+import { useCaptureStore, usePeopleStore, useThreadStore, useUiStore } from '@/store'
 import { cn } from '@/lib/utils'
-import { relativeTime } from '@/lib/date'
 
 const CAPTURE_TYPE_OPTIONS = [
   { value: 'commitment', label: 'Commitment', icon: Lightning, tone: 'commitment' },
@@ -47,16 +46,19 @@ const CAPTURE_TYPE_OPTIONS = [
  * 4. Stop Capturing: ends the club and saves the captures (no recap generated).
  */
 export function ThreadSessionFlow({ onOpenCompanion }) {
-  const { threads, isLoading: threadsLoading, refresh: refreshThreads } = useThreads({ autoLoad: true })
+  const { refresh: refreshThreads } = useThreads({ autoLoad: false })
   const { people, createPerson, refresh: refreshPeople } = usePeople({ autoLoad: true })
   const createCapture = useCaptureStore((state) => state.createCapture)
   const createThread = useThreadStore((state) => state.createThread)
 
-  // Step state: 'home' | 'new_details' | 'new_people' | 'session' | 'summary'
-  const [step, setStep] = useState('home')
+  // Step state: 'people' | 'person_threads' | 'new_details' | 'new_people' | 'session' | 'summary'
+  const [step, setStep] = useState('people')
 
-  // Search in home
-  const [searchQuery, setSearchQuery] = useState('')
+  // People-first flow: the picked person + the threads they already share.
+  const selectPerson = usePeopleStore((state) => state.selectPerson)
+  const pickedPerson = usePeopleStore((state) => state.selectedPerson)
+  const pickedPersonThreads = usePeopleStore((state) => state.selectedPersonThreads)
+  const [pickedThreadsLoading, setPickedThreadsLoading] = useState(false)
 
   // Create thread form
   const [title, setTitle] = useState('')
@@ -111,18 +113,6 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
     useUiStore.getState().updateSessionElapsed(sessionElapsed)
   }, [sessionElapsed, step])
 
-  // Filtered threads for home
-  const filteredThreads = useMemo(() => {
-    const list = threads.filter((t) => t.status === 'active')
-    if (!searchQuery.trim()) return list
-    const q = searchQuery.toLowerCase().trim()
-    return list.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        (t.description && t.description.toLowerCase().includes(q)),
-    )
-  }, [threads, searchQuery])
-
   // Filtered people for person selection
   const filteredPeople = useMemo(() => {
     if (!personSearch.trim()) return people
@@ -135,6 +125,30 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
     )
   }, [people, personSearch])
 
+  // People-first flow step 1 -> 2: pick a person, then load their threads.
+  const handlePickPerson = async (person) => {
+    if (!person?.id) return
+    // Pre-select them so the "Add People" step starts with them checked.
+    setSelectedPersonIds([person.id])
+    setPersonSearch('')
+    setPickedThreadsLoading(true)
+    setStep('person_threads')
+    try {
+      await selectPerson(person.id)
+    } catch {
+      // Keep going - the "create new thread" option is always available.
+    } finally {
+      setPickedThreadsLoading(false)
+    }
+  }
+
+  // Start a brand new thread for the picked person.
+  const handleStartNewThread = () => {
+    setTitle('')
+    setDescription('')
+    setStep('new_details')
+  }
+
   // Handle adding an inline person
   const handleCreatePersonInline = async (e) => {
     e.preventDefault()
@@ -146,14 +160,14 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         role: newPersonRole.trim() || undefined,
         organisation: newPersonOrg.trim() || undefined,
       })
-      if (created?.id) {
-        setSelectedPersonIds((prev) => [...prev, created.id])
-      }
+      const person = created?.person ?? created
       setNewPersonName('')
       setNewPersonRole('')
       setNewPersonOrg('')
       setShowCreatePerson(false)
       refreshPeople()
+      // Take the freshly created person straight to their threads.
+      if (person?.id) await handlePickPerson(person)
     } catch {
       // ignore
     } finally {
@@ -314,46 +328,31 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
     }
   }
 
-  // Reset to home
+  // Reset the flow back to the person picker.
   const handleResetHome = () => {
-    setStep('home')
+    setStep('people')
     setTitle('')
     setDescription('')
     setSelectedPersonIds([])
     setActiveThread(null)
     setSessionCaptures([])
     setCaptureInput('')
-    setSearchQuery('')
+    setPersonSearch('')
+    usePeopleStore.getState().selectPerson(null)
   }
 
   // -------------------------------------------------------------
-  // VIEW 1: HOME (Start with Create Thread / Search / Recent Threads)
+  // VIEW 1: PICK A PERSON (search, select, or create new)
   // -------------------------------------------------------------
-  if (step === 'home') {
+  if (step === 'people') {
     return (
       <div className="flex flex-1 flex-col gap-3 p-3.5">
-        {/* Prominent Create New Thread CTA */}
-        <button
-          type="button"
-          onClick={() => {
-            setTitle('')
-            setDescription('')
-            setSelectedPersonIds([])
-            setStep('new_details')
-          }}
-          className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-primary-light/40 px-3.5 py-3 text-left transition-all hover:bg-primary-light hover:border-primary/50 shadow-xs cursor-pointer group"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-white shadow-xs group-hover:scale-105 transition-transform">
-              <Plus size={16} weight="bold" />
-            </div>
-            <div>
-              <p className="text-small font-bold text-ink">Create New Thread</p>
-              <p className="text-tiny text-ink-subtle">Add people and start a capture session</p>
-            </div>
-          </div>
-          <ArrowRight size={15} weight="bold" className="text-primary group-hover:translate-x-0.5 transition-transform" />
-        </button>
+        <div className="pb-1 border-b border-line">
+          <h2 className="text-small font-bold text-ink">Who is this session with?</h2>
+          <p className="text-tiny text-ink-subtle">
+            Pick a person, then choose a thread you share or create a new one
+          </p>
+        </div>
 
         {/* Search Bar */}
         <div className="relative">
@@ -362,16 +361,16 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
             className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle"
           />
           <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search threads..."
-            aria-label="Search threads"
+            value={personSearch}
+            onChange={(e) => setPersonSearch(e.target.value)}
+            placeholder="Search people..."
+            aria-label="Search people"
             className="h-9 w-full rounded-xl border border-line bg-overlay pl-8.5 pr-8 text-small text-ink placeholder:text-ink-subtle transition-all focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/12"
           />
-          {searchQuery && (
+          {personSearch && (
             <button
               type="button"
-              onClick={() => setSearchQuery('')}
+              onClick={() => setPersonSearch('')}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink cursor-pointer"
             >
               <X size={13} />
@@ -379,55 +378,115 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
           )}
         </div>
 
-        {/* Recent Threads List */}
+        {/* People List */}
         <div className="flex flex-1 flex-col min-h-0">
           <div className="mb-1.5 flex items-center justify-between">
             <span className="text-tiny font-semibold uppercase tracking-wider text-ink-subtle">
-              {searchQuery ? 'Search Results' : 'Recent Threads'}
+              {personSearch.trim() ? 'Search Results' : 'People'}
             </span>
-            <span className="text-tiny text-ink-subtle">
-              {filteredThreads.length} active
-            </span>
+            <span className="text-tiny text-ink-subtle">{filteredPeople.length}</span>
           </div>
 
-          {threadsLoading && filteredThreads.length === 0 ? (
-            <ThreadListSkeleton count={4} />
-          ) : filteredThreads.length === 0 ? (
+          {people.length === 0 ? (
+            <div className="flex flex-col gap-1.5 py-1">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <PersonRowSkeleton key={i} />
+              ))}
+            </div>
+          ) : filteredPeople.length === 0 ? (
             <EmptyState
-              title={searchQuery ? 'No matching threads' : 'No threads found'}
-              description={
-                searchQuery
-                  ? 'Try a different search term or create a new thread above.'
-                  : 'Start by clicking "+ Create New Thread" above.'
-              }
+              title="No matching people"
+              description="Try a different search, or create a new person below."
             />
           ) : (
             <ul className="flex max-h-[310px] flex-col gap-1.5 overflow-y-auto scroll-slim pr-0.5">
-              {filteredThreads.map((thread) => (
-                <li key={thread.id}>
-                  <Card className="flex items-center justify-between gap-2.5 p-2.5 hover:border-primary/40 transition-colors">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-small font-semibold text-ink">{thread.title}</p>
-                      <p className="truncate text-tiny text-ink-muted">
-                        {thread.description || relativeTime(thread.lastInteractionAt)}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      loading={startingSessionId === thread.id}
-                      onClick={() => handleStartExistingThreadSession(thread)}
-                      className="shrink-0 text-tiny h-7 px-2.5 gap-1 shadow-2xs"
-                    >
-                      <Lightning size={12} weight="bold" />
-                      Capture
-                    </Button>
-                  </Card>
+              {filteredPeople.map((person) => (
+                <li key={person.id}>
+                  <button
+                    type="button"
+                    onClick={() => handlePickPerson(person)}
+                    className="flex w-full items-center justify-between gap-2.5 rounded-xl border border-line/70 bg-card p-2.5 text-left transition-colors hover:border-primary/40 hover:bg-overlay cursor-pointer"
+                  >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <Avatar name={person.fullName} size="sm" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-small font-semibold text-ink">
+                          {person.fullName}
+                        </span>
+                        <span className="block truncate text-tiny text-ink-muted">
+                          {[person.role, person.organisation].filter(Boolean).join(' · ') ||
+                            'Contact'}
+                        </span>
+                      </span>
+                    </span>
+                    <ArrowRight size={14} weight="bold" className="shrink-0 text-ink-subtle" />
+                  </button>
                 </li>
               ))}
             </ul>
           )}
         </div>
+
+        {/* Inline Create Person Form */}
+        {showCreatePerson ? (
+          <form
+            onSubmit={handleCreatePersonInline}
+            className="rounded-xl border border-primary/30 bg-primary-light/20 p-3 flex flex-col gap-2"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-tiny font-bold text-primary">New Person</span>
+              <button
+                type="button"
+                onClick={() => setShowCreatePerson(false)}
+                className="text-ink-subtle hover:text-ink cursor-pointer"
+              >
+                <X size={12} />
+              </button>
+            </div>
+            <Input
+              autoFocus
+              size="sm"
+              placeholder="Full Name *"
+              value={newPersonName}
+              onChange={(e) => setNewPersonName(e.target.value)}
+              className="h-8 text-tiny"
+            />
+            <div className="flex gap-2">
+              <Input
+                size="sm"
+                placeholder="Role (optional)"
+                value={newPersonRole}
+                onChange={(e) => setNewPersonRole(e.target.value)}
+                className="h-8 text-tiny flex-1"
+              />
+              <Input
+                size="sm"
+                placeholder="Company (optional)"
+                value={newPersonOrg}
+                onChange={(e) => setNewPersonOrg(e.target.value)}
+                className="h-8 text-tiny flex-1"
+              />
+            </div>
+            <Button
+              type="submit"
+              size="sm"
+              loading={creatingPerson}
+              disabled={!newPersonName.trim()}
+              className="mt-1 h-7 text-tiny"
+            >
+              Create Person
+            </Button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowCreatePerson(true)}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-line bg-overlay/40 py-2 text-tiny font-semibold text-primary hover:border-primary/40 hover:underline cursor-pointer"
+          >
+            <Plus size={13} weight="bold" />
+            Create new person
+          </button>
+        )}
 
         {onOpenCompanion && (
           <div className="mt-auto pt-2 border-t border-line/60">
@@ -446,7 +505,88 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
   }
 
   // -------------------------------------------------------------
-  // VIEW 2: CREATE THREAD DETAILS (Title & Description)
+  // VIEW 2: THE PICKED PERSON'S THREADS (+ create a new one)
+  // -------------------------------------------------------------
+  if (step === 'person_threads') {
+    const personThreads = pickedPersonThreads ?? []
+
+    return (
+      <div className="flex flex-1 flex-col gap-3 p-3.5">
+        <div className="flex items-center gap-2 pb-1 border-b border-line">
+          <button
+            type="button"
+            onClick={() => setStep('people')}
+            className="rounded-lg p-1 text-ink-subtle hover:text-ink hover:bg-overlay cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <Avatar name={pickedPerson?.fullName ?? ''} size="sm" />
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-small font-bold text-ink">
+              {pickedPerson?.fullName ?? 'Person'}
+            </h2>
+            <p className="text-tiny text-ink-subtle">
+              {personThreads.length > 0
+                ? `${personThreads.length} thread${personThreads.length === 1 ? '' : 's'} together`
+                : 'No threads together yet'}
+            </p>
+          </div>
+        </div>
+
+        {/* Always available - and the only option when no threads exist yet */}
+        <Button size="sm" onClick={handleStartNewThread} className="w-full gap-1.5 shadow-sm">
+          <Plus size={14} weight="bold" />
+          Create New Thread
+        </Button>
+
+        <div className="flex flex-1 flex-col min-h-0">
+          {pickedThreadsLoading ? (
+            <ThreadListSkeleton count={3} />
+          ) : personThreads.length === 0 ? (
+            <EmptyState
+              title={`No threads with ${pickedPerson?.fullName ?? 'this person'} yet`}
+              description="Create your first thread above to start capturing notes, decisions and commitments."
+            />
+          ) : (
+            <>
+              <span className="mb-1.5 text-tiny font-semibold uppercase tracking-wider text-ink-subtle">
+                Threads together
+              </span>
+              <ul className="flex max-h-[310px] flex-col gap-1.5 overflow-y-auto scroll-slim pr-0.5">
+                {personThreads.map((thread) => (
+                  <li key={thread.id}>
+                    <Card className="flex items-center justify-between gap-2.5 p-2.5 hover:border-primary/40 transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-small font-semibold text-ink">
+                          {thread.title}
+                        </p>
+                        <p className="truncate text-tiny text-ink-muted capitalize">
+                          {thread.status ?? 'active'}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        loading={startingSessionId === thread.id}
+                        onClick={() => handleStartExistingThreadSession(thread)}
+                        className="shrink-0 text-tiny h-7 px-2.5 gap-1 shadow-2xs"
+                      >
+                        <Lightning size={12} weight="bold" />
+                        Capture
+                      </Button>
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 3: CREATE THREAD DETAILS (Title & Description)
   // -------------------------------------------------------------
   if (step === 'new_details') {
     return (
@@ -454,14 +594,18 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         <div className="flex items-center gap-2 pb-1 border-b border-line">
           <button
             type="button"
-            onClick={() => setStep('home')}
+            onClick={() => setStep('person_threads')}
             className="rounded-lg p-1 text-ink-subtle hover:text-ink hover:bg-overlay cursor-pointer"
           >
             <ArrowLeft size={16} />
           </button>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-small font-bold text-ink">New Thread Details</h2>
-            <p className="text-tiny text-ink-subtle">Step 1 of 2: Define the topic</p>
+            <p className="truncate text-tiny text-ink-subtle">
+              {pickedPerson?.fullName
+                ? `For ${pickedPerson.fullName} · Step 1 of 2`
+                : 'Step 1 of 2: Define the topic'}
+            </p>
           </div>
         </div>
 
@@ -490,7 +634,7 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-line">
-          <Button variant="ghost" size="sm" onClick={() => setStep('home')}>
+          <Button variant="ghost" size="sm" onClick={() => setStep('person_threads')}>
             Cancel
           </Button>
           <Button
@@ -936,7 +1080,7 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
 
         <div className="mt-auto pt-2 border-t border-line">
           <Button size="sm" onClick={handleResetHome} className="w-full font-bold">
-            Done / Back to Threads
+            Done
           </Button>
         </div>
       </div>

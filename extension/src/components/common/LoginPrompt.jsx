@@ -12,10 +12,10 @@ import { Logo } from '@/components/common/Logo'
  * Posts to `POST /auth/login`; in demo mode the bundled mock API signs the user
  * in as the seeded Meera persona.
  */
-export function LoginPrompt({ title = 'Sign in to Threadwise', description }) {
+export function LoginPrompt({ title = 'Sign in to Friday', description }) {
   const { signIn, error, clearError } = useAuthState()
-  const [email, setEmail] = useState('meera@demo.threadwise.app')
-  const [password, setPassword] = useState('threadwise')
+  const [email, setEmail] = useState('meera@demo.friday.app')
+  const [password, setPassword] = useState('friday')
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState(null)
 

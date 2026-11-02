@@ -6,7 +6,7 @@
  * bundled demo dataset from `src/mocks`, which keeps the whole product
  * explorable before the API lands.
  *
- *   VITE_API_BASE_URL  e.g. https://api.threadwise.app  (no trailing slash)
+ *   VITE_API_BASE_URL  e.g. https://api.friday.app  (no trailing slash)
  *   VITE_APP_WEB_URL   public web app URL
  *   VITE_USE_MOCK_API  'true' | 'false' (defaults to true when no base URL)
  *   VITE_API_TIMEOUT_MS default 15000
@@ -22,11 +22,11 @@ export const env = {
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
 
-  /** Base URL for the Threadwise REST API (docs/08_system_architecture.md). */
+  /** Base URL for the Friday REST API (docs/08_system_architecture.md). */
   apiBaseUrl: rawApiBaseUrl,
 
   /** Public web app URL, used for share links and deep links. */
-  appWebUrl: (import.meta.env.VITE_APP_WEB_URL ?? 'https://threadwise.app').replace(/\/+$/, ''),
+  appWebUrl: (import.meta.env.VITE_APP_WEB_URL ?? 'https://friday.app').replace(/\/+$/, ''),
 
   apiTimeoutMs: Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 15000),
 

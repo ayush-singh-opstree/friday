@@ -13,7 +13,7 @@ export function ProtectedView({ children, title, description }) {
 
   if (status === 'authenticated') return children
   if (status === 'idle' || status === 'loading') {
-    return <LoadingState label="Checking your Threadwise session…" />
+    return <LoadingState label="Checking your Friday session…" />
   }
 
   return <LoginPrompt title={title} description={description} />

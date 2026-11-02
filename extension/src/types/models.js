@@ -1,5 +1,5 @@
 /**
- * JSDoc type definitions mirroring the Threadwise data model.
+ * JSDoc type definitions mirroring the Friday data model.
  * Kept in plain JS (this project is JavaScript, not TypeScript) so editors
  * still get intellisense via `@typedef`.
  *

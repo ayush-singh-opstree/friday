@@ -7,7 +7,7 @@ import { useSyncStore } from '@/store'
  * - tracks online/offline and drains the pending write queue on reconnect
  * - subscribes to the server's SSE feed when `VITE_REALTIME_URL` is configured,
  *   so a capture made in the web app lights up in the companion within seconds
- *   (Feature 13 -> "syncs with the Threadwise account in real time").
+ *   (Feature 13 -> "syncs with the Friday account in real time").
  */
 
 /** Attach connectivity listeners. Returns a cleanup function. */
