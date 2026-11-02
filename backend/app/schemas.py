@@ -56,7 +56,8 @@ __all__ = [
     # SnoozeRecord
     "SnoozeCreate", "SnoozeResponse",
     # Notification
-    "NotificationResponse",
+    "NotificationResponse", "NotificationPreferencesSchema", "NotificationPreferencesUpdate",
+    "NotificationCreate",
     # Attention
     "AttentionThreadItem", "TodayViewResponse",
     # Search
@@ -333,6 +334,27 @@ class SnoozeResponse(_Base):
 # ─────────────────────────────────────────────────────────────────────────────
 #  Notification
 # ─────────────────────────────────────────────────────────────────────────────
+
+class NotificationCreate(_Base):
+    type: NotificationType
+    title: str = Field(..., max_length=255)
+    body: str
+    reference_type: Optional[str] = None
+    reference_id: Optional[str] = None
+    deep_link_url: str = ""
+    scheduled_at: Optional[datetime] = None
+
+
+class NotificationPreferencesUpdate(_Base):
+    daily_digest: Optional[bool] = None
+    commitment_due: Optional[bool] = None
+    going_cold: Optional[bool] = None
+    pre_meeting_brief: Optional[bool] = None
+    reengagement_digest: Optional[bool] = None
+    digest_time: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
+    digest_enabled: Optional[bool] = None
+    email_digest_enabled: Optional[bool] = None
+
 
 class NotificationResponse(_Base):
     id: str

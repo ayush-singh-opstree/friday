@@ -45,7 +45,7 @@ DEFAULT_GOING_COLD_THRESHOLD_DAYS: int = int(
 )
 DEFAULT_DIGEST_TIME: str = os.getenv("DEFAULT_DIGEST_TIME", "08:00")
 
-# ── AI (OpenAI) ───────────────────────────────────────────────────────────────
-OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o")
+# ── AI (Gemini) ─────────────────────────────────────────────────────────────
+GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
