@@ -3,6 +3,7 @@ import { capturesApi } from '@/apis'
 import { mirrorCaptures } from '@/offline'
 import { OP_KINDS } from '@/offline/outbox'
 import { useSyncStore } from './syncStore'
+import { useAttentionStore } from './attentionStore'
 
 /**
  * captureStore - Inbox, recent captures and the Quick Capture write path
@@ -28,6 +29,7 @@ export const useCaptureStore = create((set) => ({
       const data = await capturesApi.list({ status: 'inbox' })
       const list = data?.captures ?? []
       set({ inbox: list, status: 'ready' })
+      useAttentionStore.setState({ inboxCount: list.length })
       await mirrorCaptures(list).catch(() => {})
       return list
     } catch (error) {
@@ -96,6 +98,9 @@ export const useCaptureStore = create((set) => ({
         inbox: capture && !capture.threadId ? [capture, ...state.inbox] : state.inbox,
         saving: false,
       }))
+      if (capture && !capture.threadId) {
+        useAttentionStore.setState((s) => ({ inboxCount: s.inboxCount + 1 }))
+      }
       return capture
     } catch {
       // Server unreachable or errored: keep the capture and queue a retry so the
@@ -116,6 +121,7 @@ export const useCaptureStore = create((set) => ({
   async assignCapture(captureId, threadId) {
     const data = await capturesApi.assign(captureId, threadId)
     set((state) => ({ inbox: state.inbox.filter((row) => row.id !== captureId) }))
+    useAttentionStore.setState((s) => ({ inboxCount: Math.max(0, s.inboxCount - 1) }))
     return data?.capture
   },
 
@@ -125,5 +131,6 @@ export const useCaptureStore = create((set) => ({
       inbox: state.inbox.filter((row) => row.id !== captureId),
       recent: state.recent.filter((row) => row.id !== captureId),
     }))
+    useAttentionStore.setState((s) => ({ inboxCount: Math.max(0, s.inboxCount - 1) }))
   },
 }))

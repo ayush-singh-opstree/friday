@@ -400,7 +400,7 @@ function BrainDumpContent({ onOpenChange }) {
                       className="h-7 rounded-md border border-line bg-overlay px-2 text-tiny font-semibold capitalize text-ink focus:border-primary focus:outline-none"
                     >
                       <option value="note">Note</option>
-                      <option value="action">Action</option>
+                      <option value="commitment">Commitment</option>
                       <option value="decision">Decision</option>
                       <option value="question">Question</option>
                     </select>

@@ -13,6 +13,7 @@ import {
   Users,
 } from '@/components/icons'
 import { useAuth } from '@/auth'
+import { InboxSheet } from '@/components/capture/InboxSheet'
 import { QuickCaptureSheet } from '@/components/capture/QuickCaptureSheet'
 import { SearchOverlay } from '@/components/search/SearchOverlay'
 import { Wordmark, Logo } from '@/components/common/Brand'
@@ -86,6 +87,8 @@ export function AppShell({ children }) {
   const location = useLocation()
   const openQuickCapture = useUiStore((state) => state.openQuickCapture)
   const openSearch = useUiStore((state) => state.openSearch)
+  const inboxOpen = useUiStore((state) => state.inboxOpen)
+  const closeInbox = useUiStore((state) => state.closeInbox)
 
   const { isDesktop } = useBreakpoint()
   const sidebarPref = useUiStore((state) => state.settings.sidebar ?? 'auto')
@@ -322,6 +325,7 @@ export function AppShell({ children }) {
         })}
       </nav>
 
+      <InboxSheet open={inboxOpen} onOpenChange={(open) => !open && closeInbox()} />
       <QuickCaptureSheet />
       <SearchOverlay />
       <Toaster />

@@ -210,9 +210,9 @@ function QuickCaptureForm({ initialThreadId }) {
               <button
                 type="button"
                 className="font-semibold text-primary underline underline-offset-2"
-                onClick={() => setType('action')}
+                onClick={() => setType('commitment')}
               >
-                Track as action
+                Track as commitment
               </button>
             </p>
           </div>

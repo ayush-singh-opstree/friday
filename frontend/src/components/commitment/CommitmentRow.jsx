@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, Check } from '@/components/icons'
+import { Check } from '@/components/icons'
 import { Chip } from '@/components/ui/Chip'
 import { commitmentStatusMeta, humaniseDueDate } from '@/lib/date'
 import { cn } from '@/lib/utils'
@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils'
  * Commitment row (Feature 5).
  *
  * Answers the three questions a row should answer at a glance:
- *   1. How do I complete it?  -> a checkbox that shows a tick on hover, plus an
- *      explicit, labelled "Complete" button that appears on hover / focus.
+ *   1. How do I complete it?  -> a single checkbox control that previews a tick
+ *      on hover, and toggles to reopen once the commitment is complete.
  *   2. What is its status?    -> a status chip (Overdue / Due soon / Open /
  *      Completed) alongside the humanised due date.
  *   3. Who owns it, and for which thread? -> a meta line.
@@ -30,12 +30,12 @@ export function CommitmentRow({
   return (
     <div
       className={cn(
-        'group flex items-start gap-3 px-3.5 py-3 transition-colors hover:bg-overlay/60',
+        'flex items-start gap-3 px-3.5 py-3 transition-colors hover:bg-overlay/60',
         className,
       )}
     >
-      {/* 1. Unambiguous completion affordance: a real checkbox that previews a
-             tick on hover, with a tooltip-free `title` fallback. */}
+      {/* 1. The single completion affordance: a checkbox that previews a tick on
+             hover, with a tooltip-free `title` fallback. */}
       <button
         type="button"
         onClick={() => (completed ? onReopen?.(commitment) : onComplete?.(commitment))}
@@ -85,30 +85,6 @@ export function CommitmentRow({
           ) : null}
         </div>
       </div>
-
-      {/* 3. An explicit, labelled action so completing never has to be guessed */}
-      {completed ? (
-        onReopen ? (
-          <button
-            type="button"
-            onClick={() => onReopen(commitment)}
-            className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-tiny font-medium text-ink-muted opacity-0 transition-all hover:border-primary/40 hover:bg-primary-light hover:text-primary focus-visible:opacity-100 group-hover:opacity-100 sm:flex"
-          >
-            <ArrowCounterClockwise size={12} weight="bold" />
-            Reopen
-          </button>
-        ) : null
-      ) : onComplete ? (
-        <button
-          type="button"
-          onClick={() => onComplete(commitment)}
-          disabled={busy}
-          className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-tiny font-medium text-ink-muted opacity-0 transition-all hover:border-success/40 hover:bg-success/10 hover:text-success focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-50 sm:flex"
-        >
-          <Check size={12} weight="bold" />
-          Complete
-        </button>
-      ) : null}
     </div>
   )
 }

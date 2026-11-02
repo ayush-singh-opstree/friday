@@ -222,7 +222,7 @@ export function PersonDetailPage() {
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] font-semibold text-ink-subtle uppercase tracking-wider">
-              Open Promises
+              Open Commitments
             </span>
             <span className="mt-0.5 text-heading-3 font-bold text-primary">
               {openCommitments.length}

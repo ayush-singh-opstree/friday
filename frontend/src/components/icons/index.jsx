@@ -41,6 +41,7 @@ import {
   Globe as LucideGlobe,
   History as LucideHistory,
   House as LucideHouse,
+  Inbox as LucideInbox,
   Info as LucideInfo,
   Key as LucideKey,
   LogIn as LucideLogIn,
@@ -132,6 +133,8 @@ export const EnvelopeSimple = icon(LucideMail, 'EnvelopeSimple')
 export const GearSix = icon(LucideSettings, 'GearSix')
 export const Globe = icon(LucideGlobe, 'Globe')
 export const HouseSimple = icon(LucideHouse, 'HouseSimple')
+export const Tray = icon(LucideInbox, 'Tray')
+export const Inbox = icon(LucideInbox, 'Inbox')
 export const Info = icon(LucideInfo, 'Info')
 export const Key = icon(LucideKey, 'Key')
 export const Lightning = icon(LucideZap, 'Lightning')

@@ -11,6 +11,7 @@ const TONES = {
   primary: 'bg-primary-light text-primary',
   note: 'bg-[#EEF1FE] text-[#4F6AF5]',
   action: 'bg-[#FFF3E0] text-[#E67E22]',
+  commitment: 'bg-[#FFF3E0] text-[#E67E22]',
   decision: 'bg-[#E8F5E9] text-[#27AE60]',
   question: 'bg-[#FCE4EC] text-[#E91E63]',
   cold: 'bg-[#E3F2FD] text-[#1565C0]',
@@ -34,7 +35,7 @@ export function Chip({ tone = 'neutral', icon = null, className, children }) {
   )
 }
 
-const TYPE_ICONS = { note: Note, action: Lightning, decision: CheckSquare, question: Question }
+const TYPE_ICONS = { note: Note, action: Lightning, commitment: Lightning, decision: CheckSquare, question: Question }
 
 /** Chip for a capture type. */
 export function CaptureTypeChip({ type = 'note', className }) {

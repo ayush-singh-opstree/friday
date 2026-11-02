@@ -10,6 +10,7 @@ import {
   Plus,
   Snowflake,
   Sparkle,
+  Tray,
 } from '@/components/icons'
 import { useAuth } from '@/auth'
 import { GoingColdRail } from '@/components/attention/GoingColdRail'
@@ -34,6 +35,7 @@ export function TodayPage() {
     useAttention()
   const { complete } = useCommitments({ autoLoad: false })
   const openQuickCapture = useUiStore((state) => state.openQuickCapture)
+  const openInbox = useUiStore((state) => state.openInbox)
   const pushToast = useUiStore((state) => state.pushToast)
   const [dumpOpen, setDumpOpen] = useState(false)
 
@@ -61,11 +63,15 @@ export function TodayPage() {
               Brain dump
             </Button>
             {inboxCount > 0 ? (
-              <Link to="/threads">
-                <Button variant="outline" size="sm">
-                  Inbox · {inboxCount}
-                </Button>
-              </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openInbox}
+                className="gap-1.5"
+              >
+                <Tray size={14} weight="duotone" />
+                Inbox · {inboxCount}
+              </Button>
             ) : null}
             <Button size="sm" onClick={() => openQuickCapture(null)} className="gap-1.5 shadow-sm">
               <Plus size={14} weight="bold" />
@@ -87,7 +93,7 @@ export function TodayPage() {
         <EmptyState
           icon={<Sparkle size={24} weight="duotone" />}
           title="Welcome to Threadwise"
-          description="Create your first thread to start tracking relationships and promises."
+          description="Create your first thread to start tracking relationships and commitments."
           action={
             <Link to="/threads">
               <Button>Go to threads</Button>
@@ -168,7 +174,7 @@ export function TodayPage() {
                   {overdue.length}
                 </p>
                 <p className="mt-1 text-tiny font-medium text-ink-muted">
-                  {overdue.length > 0 ? 'Overdue Promises' : 'Overdue Tasks'}
+                  {overdue.length > 0 ? 'Overdue Commitments' : 'Overdue Tasks'}
                 </p>
               </div>
             </div>
@@ -236,7 +242,7 @@ export function TodayPage() {
               <section className="rounded-2xl border border-line/80 bg-card p-4.5 shadow-xs">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-heading-3 font-semibold text-ink">Today's Promises</h2>
+                    <h2 className="text-heading-3 font-semibold text-ink">Today's Commitments</h2>
                     <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-tiny font-bold text-primary">
                       {overdue.length + dueToday.length}
                     </span>
@@ -276,28 +282,6 @@ export function TodayPage() {
                   </div>
                 )}
               </section>
-
-              {/* Brain Dump Card */}
-              <div className="rounded-2xl border border-line/70 bg-gradient-to-br from-surface to-overlay/80 p-4.5">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Brain size={18} weight="duotone" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="text-small font-semibold text-ink">Fast Brain Dump</h4>
-                    <p className="mt-0.5 text-tiny text-ink-muted leading-relaxed">
-                      Jot down unstructured notes, promised follow-ups, or meeting takeaways.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setDumpOpen(true)}
-                      className="mt-3 inline-flex items-center gap-1.5 text-tiny font-semibold text-primary hover:underline"
-                    >
-                      Open brain dump <ArrowRight size={11} weight="bold" />
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>

@@ -835,9 +835,9 @@ route('POST', /^\/ai\/classify$/, async ({ body }) => {
       lower.includes(word),
     )
   ) {
-    suggestedType = 'action'
+    suggestedType = 'commitment'
     confidence = 0.9
-    reasoning = 'Contains action/promise keywords.'
+    reasoning = 'Contains commitment/promise keywords.'
   } else if (['decided', 'agreed that', 'decision', 'selected'].some((word) => lower.includes(word))) {
     suggestedType = 'decision'
     confidence = 0.88
