@@ -83,7 +83,7 @@ function ThreadForm({ onOpenChange }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       <Field label="Thread title" htmlFor="thread-title" error={error}>
         <Input
           id="thread-title"
@@ -96,11 +96,7 @@ function ThreadForm({ onOpenChange }) {
         />
       </Field>
 
-      <Field
-        label="Description"
-        htmlFor="thread-description"
-        hint="Optional · up to 500 characters"
-      >
+      <Field label="Description" htmlFor="thread-description" hint="Optional · up to 500 characters">
         <Textarea
           id="thread-description"
           rows={2}

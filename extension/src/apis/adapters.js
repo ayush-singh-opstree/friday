@@ -93,6 +93,24 @@ export function toPerson(dto) {
   }
 }
 
+/**
+ * ThreadPersonResponse[] -> the compact people list a thread carries.
+ *
+ * `{ id, fullName, organisation }` is what the thread cards, the thread detail
+ * panel and the `personId` list filter read, and it matches the demo router, so
+ * both data sources stay interchangeable.
+ */
+export function toThreadPeople(links) {
+  return (Array.isArray(links) ? links : [])
+    .map((link) => (link?.person ? toPerson(link.person) : null))
+    .filter(Boolean)
+    .map((person) => ({
+      id: person.id,
+      fullName: person.fullName,
+      organisation: person.organisation ?? null,
+    }))
+}
+
 /** CaptureResponse -> Capture */
 export function toCapture(dto) {
   if (!dto) return null

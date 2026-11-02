@@ -92,7 +92,7 @@ function PersonForm({ person = null, onOpenChange, onViewExisting }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       <Field label="Full name" htmlFor="person-name" error={error}>
         <Input
           id="person-name"
@@ -170,11 +170,7 @@ function PersonForm({ person = null, onOpenChange, onViewExisting }) {
         </Field>
       </div>
 
-      <Field
-        label="LinkedIn URL"
-        htmlFor="person-linkedin"
-        hint="Used to match on the LinkedIn companion"
-      >
+      <Field label="LinkedIn URL" htmlFor="person-linkedin">
         <Input
           id="person-linkedin"
           value={linkedInUrl}
@@ -183,13 +179,13 @@ function PersonForm({ person = null, onOpenChange, onViewExisting }) {
         />
       </Field>
 
-      <Field label="Notes" htmlFor="person-notes" hint="Anything worth remembering">
+      <Field label="Notes" htmlFor="person-notes">
         <Textarea
           id="person-notes"
-          rows={3}
+          rows={2}
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
-          placeholder="Prefers async updates. Decision maker for Q3 scope."
+          placeholder="Anything worth remembering — preferences, context, next steps."
         />
       </Field>
 

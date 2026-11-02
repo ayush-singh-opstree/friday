@@ -18,6 +18,7 @@ import {
   toList,
   toPerson,
   toThread,
+  toThreadPeople,
   toTodayPayload,
 } from '@/apis/adapters'
 
@@ -186,6 +187,30 @@ function fixtureChecks() {
     'derivePeopleStats counts only open commitments',
     stats.get('p1')?.openCommitmentCount === 2 && stats.get('p2')?.openCommitmentCount === 0,
   )
+
+  // Regression guard: a thread's people used to be dropped entirely in live mode.
+  const threadPeople = toThreadPeople([
+    {
+      thread_id: 't1',
+      person_id: 'p1',
+      person: {
+        id: 'p1',
+        user_id: 'u1',
+        full_name: 'Meera Krishnamurthy',
+        organisation: 'Acme',
+        role: 'PM',
+        created_at: 'x',
+        updated_at: 'x',
+      },
+    },
+    { thread_id: 't1', person_id: 'p2', person: null },
+  ])
+  check(
+    'toThreadPeople maps links and skips malformed ones',
+    threadPeople.length === 1 &&
+      threadPeople[0].fullName === 'Meera Krishnamurthy' &&
+      threadPeople[0].organisation === 'Acme',
+  )
 }
 
 /* ----------------------------------------------------------------- live --- */
@@ -253,6 +278,14 @@ async function liveChecks() {
     'directory counts resolve from live links',
     enriched.some((person) => (person.threadCount ?? 0) > 0),
     enriched.map((person) => `${person.fullName}:${person.threadCount ?? 0}`).join(', '),
+  )
+
+  // Regression guard: every thread's People tab must resolve (was always empty).
+  const threadPeople = threadRows.map((thread, index) => toThreadPeople(linkSets[index]))
+  check(
+    'thread -> people resolve from live links',
+    threadPeople.every((entry) => entry.length > 0),
+    threadRows.map((thread, index) => `${thread.title}:${threadPeople[index].length}`).join(', '),
   )
 }
 

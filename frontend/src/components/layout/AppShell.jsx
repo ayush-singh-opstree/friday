@@ -17,7 +17,6 @@ import { useAuth } from '@/auth'
 import { QuickCaptureSheet } from '@/components/capture/QuickCaptureSheet'
 import { SearchOverlay } from '@/components/search/SearchOverlay'
 import { Wordmark, Logo } from '@/components/common/Brand'
-import { DataSourceBadge } from '@/components/common/DataSourceBadge'
 import { OfflineBanner } from '@/components/common/System'
 import { Toaster } from '@/components/common/Toaster'
 import { IconButton } from '@/components/ui/Button'
@@ -40,9 +39,46 @@ const ICONS = { HouseSimple, ChatCircleDots, Users, CheckSquare }
 
 const tabClass = ({ isActive }) =>
   cn(
-    'flex flex-1 flex-col items-center gap-0.5 py-1.5 text-tiny font-medium transition-colors duration-150',
-    isActive ? 'text-primary' : 'text-ink-subtle',
+    'relative flex flex-1 flex-col items-center gap-0.5 py-1.5 text-tiny font-medium transition-colors duration-150',
+    isActive
+      ? "text-primary after:absolute after:top-0 after:left-1/2 after:h-0.5 after:w-8 after:-translate-x-1/2 after:rounded-full after:bg-primary after:content-['']"
+      : 'text-ink-subtle',
   )
+
+function SidebarNavLink({ to, label, icon: Icon, collapsed }) {
+  const location = useLocation()
+  const active =
+    to === '/today'
+      ? location.pathname === '/' || location.pathname === '/today'
+      : location.pathname.startsWith(to)
+
+  const navLink = (
+    <NavLink
+      to={to}
+      aria-label={label}
+      className={cn(
+        'tw-nav-item',
+        collapsed ? 'is-collapsed' : 'is-expanded',
+        active && 'is-active',
+      )}
+    >
+      <span className="tw-nav-icon-box">
+        <Icon size={20} className="tw-nav-icon" weight={active ? 'bold' : 'regular'} />
+      </span>
+      {collapsed ? null : <span className="tw-nav-label">{label}</span>}
+    </NavLink>
+  )
+
+  if (collapsed) {
+    return (
+      <Tooltip content={label} side="right">
+        {navLink}
+      </Tooltip>
+    )
+  }
+
+  return navLink
+}
 
 export function AppShell({ children }) {
   const { user, signOut } = useAuth()
@@ -60,17 +96,6 @@ export function AppShell({ children }) {
   const collapsed =
     sidebarPref === 'collapsed' ? true : sidebarPref === 'expanded' ? false : !isDesktop
   const toggleSidebar = () => updateSettings({ sidebar: collapsed ? 'expanded' : 'collapsed' })
-
-  const navClass = ({ isActive }) =>
-    cn(
-      'group relative flex h-10 shrink-0 items-center rounded-lg text-[14px] font-medium transition-all duration-150',
-      collapsed ? 'size-10 justify-center mx-auto' : 'w-full gap-3 px-3',
-      isActive
-        ? 'bg-primary/10 text-primary font-semibold shadow-xs'
-        : 'text-ink-muted hover:bg-overlay hover:text-ink',
-    )
-
-  const railStack = collapsed ? 'items-center gap-1.5' : 'gap-1'
 
   const handleSignOut = async () => {
     await signOut()
@@ -103,22 +128,25 @@ export function AppShell({ children }) {
         <aside
           className={cn(
             'hidden h-full shrink-0 flex-col border-r border-line bg-card transition-[width,padding] duration-200 ease-out md:flex',
-            collapsed ? 'md:w-[70px] md:px-2.5' : 'md:w-64 md:px-3',
+            collapsed ? 'md:w-[72px] md:px-3' : 'md:w-64 md:px-3',
           )}
         >
           {/* Brand header */}
           <div
             className={cn(
               'group/nav flex h-16 shrink-0 items-center',
-              collapsed ? 'justify-center' : 'gap-2 px-1.5',
+              collapsed ? 'justify-center' : 'justify-between px-2',
             )}
           >
             <Link
               to="/today"
               aria-label="Threadwise home"
-              className={cn('flex items-center', collapsed && 'group-hover/nav:hidden')}
+              className={cn(
+                'flex items-center justify-center',
+                collapsed && 'size-11 group-hover/nav:hidden mx-auto',
+              )}
             >
-              {collapsed ? <Logo size={28} /> : <Wordmark size={28} />}
+              {collapsed ? <Logo size={32} /> : <Wordmark size={28} />}
             </Link>
 
             <Tooltip content={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} side="right">
@@ -128,8 +156,8 @@ export function AppShell({ children }) {
                 aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 aria-expanded={!collapsed}
                 className={cn(
-                  'size-8 shrink-0 items-center justify-center rounded-lg text-ink-subtle transition-all duration-150 hover:bg-overlay hover:text-ink',
-                  collapsed ? 'hidden group-hover/nav:flex mx-auto' : 'ml-auto flex',
+                  'size-8 shrink-0 items-center justify-center rounded-lg text-ink-subtle transition-all duration-150 hover:bg-overlay hover:text-ink cursor-pointer',
+                  collapsed ? 'hidden group-hover/nav:flex mx-auto' : 'flex',
                 )}
               >
                 {collapsed ? <CaretDoubleRight size={16} /> : <CaretDoubleLeft size={16} />}
@@ -138,59 +166,48 @@ export function AppShell({ children }) {
           </div>
 
           {/* Nav items */}
-          <ScrollArea className="min-h-0 flex-1 py-2">
-            <nav className={cn('flex w-full flex-col', railStack)} aria-label="Primary">
-              {NAV_ITEMS.map((item) => {
-                const Icon = ICONS[item.icon]
-                return (
-                  <Tooltip key={item.to} content={collapsed ? item.label : null} side="right">
-                    <NavLink to={item.to} aria-label={item.label} className={navClass}>
-                      <span className="flex size-5 shrink-0 items-center justify-center transition-transform duration-150 group-hover:scale-105">
-                        <Icon size={20} />
-                      </span>
-                      {collapsed ? null : <span className="truncate">{item.label}</span>}
-                    </NavLink>
-                  </Tooltip>
-                )
-              })}
+          <ScrollArea className="min-h-0 flex-1 py-5">
+            <nav className={cn('tw-sidebar-rail', collapsed && 'is-collapsed')} aria-label="Primary">
+              {NAV_ITEMS.map((item) => (
+                <SidebarNavLink
+                  key={item.to}
+                  to={item.to}
+                  label={item.label}
+                  icon={ICONS[item.icon]}
+                  collapsed={collapsed}
+                />
+              ))}
             </nav>
           </ScrollArea>
 
           {/* Bottom section */}
-          <div className={cn('flex w-full flex-col pb-4 pt-2', railStack)}>
-            <div className="h-px w-full shrink-0 bg-line mb-2" aria-hidden="true" />
-
-            {!collapsed && (
-              <div className="flex h-6 w-full items-center px-3 mb-1">
-                <DataSourceBadge />
-              </div>
-            )}
+          <div className={cn('tw-sidebar-rail pb-6 pt-2', collapsed && 'is-collapsed')}>
+            <div className="h-px w-full shrink-0 bg-line my-4" aria-hidden="true" />
 
             <Tooltip content={collapsed ? 'Quick capture (Ctrl+K)' : null} side="right">
               <button
                 type="button"
                 onClick={() => openQuickCapture(null)}
                 className={cn(
-                  'flex h-10 shrink-0 items-center rounded-lg font-medium transition-all duration-150',
-                  'bg-primary text-ink-inverse hover:bg-primary-dark shadow-xs hover:shadow-sm active:scale-95',
-                  collapsed ? 'size-10 justify-center mx-auto' : 'w-full gap-2.5 px-3',
+                  'tw-nav-action-btn',
+                  collapsed ? 'is-collapsed' : 'is-expanded',
                 )}
               >
-                <span className="flex size-5 shrink-0 items-center justify-center">
+                <span className="tw-nav-icon-box">
                   <Plus size={18} weight="bold" />
                 </span>
-                {collapsed ? null : <span className="text-[14px]">Quick capture</span>}
+                {collapsed ? null : (
+                  <span className="tw-nav-label">Quick capture</span>
+                )}
               </button>
             </Tooltip>
 
-            <Tooltip content={collapsed ? 'Settings' : null} side="right">
-              <NavLink to="/settings" aria-label="Settings" className={navClass}>
-                <span className="flex size-5 shrink-0 items-center justify-center transition-transform duration-150 group-hover:scale-105">
-                  <GearSix size={20} />
-                </span>
-                {collapsed ? null : <span className="truncate">Settings</span>}
-              </NavLink>
-            </Tooltip>
+            <SidebarNavLink
+              to="/settings"
+              label="Settings"
+              icon={GearSix}
+              collapsed={collapsed}
+            />
           </div>
         </aside>
 
@@ -202,7 +219,6 @@ export function AppShell({ children }) {
               <Wordmark size={24} className="[&_span]:hidden" />
             </Link>
             <div className="flex flex-1 items-center justify-end gap-1">
-              <DataSourceBadge className="mr-2 xl:hidden" />
               <Tooltip content="Search (Ctrl+F)" side="bottom">
                 <IconButton label="Search" onClick={openSearch}>
                   <MagnifyingGlass size={18} />

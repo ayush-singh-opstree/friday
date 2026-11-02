@@ -12,6 +12,7 @@
     "verify:isolation": "node --import ./scripts/alias-loader.mjs scripts/verify-isolation.mjs",
     "verify:adapters": "node --import ./scripts/alias-loader.mjs scripts/verify-api-adapters.mjs",
     "verify:live": "node --import ./scripts/alias-loader.mjs scripts/verify-api-adapters.mjs --live",
+    "verify:utilities": "node --import ./scripts/alias-loader.mjs scripts/verify-utilities.mjs",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs"
   },
@@ -21,6 +22,7 @@
     "@radix-ui/react-avatar": "^1.3.1",
     "@radix-ui/react-dialog": "^1.3.1",
     "@radix-ui/react-dropdown-menu": "^2.2.1",
+    "@radix-ui/react-popover": "^1.3.1",
     "@radix-ui/react-scroll-area": "^1.4.0",
     "@radix-ui/react-switch": "^1.4.1",
     "@radix-ui/react-tabs": "^1.2.1",
@@ -32,6 +34,7 @@
     "lucide-react": "^1.66.0",
     "motion": "^14.9.0",
     "react": "^19.3.1",
+    "react-datepicker": "^9.1.0",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.5",
     "sonner": "^2.0.8",

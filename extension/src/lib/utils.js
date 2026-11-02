@@ -1,5 +1,33 @@
 import { clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { extendTailwindMerge } from 'tailwind-merge'
+
+/**
+ * tailwind-merge only knows Tailwind's default scale. Our `@theme` type scale
+ * (`text-small`, `text-tiny`, `text-heading-2`, ...) is otherwise classified as
+ * a text *colour*, which silently drops real colour utilities (e.g. the white
+ * label on a primary button) when a size class follows them in `cn()`.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [
+        {
+          text: [
+            'display',
+            'heading-1',
+            'heading-2',
+            'heading-3',
+            'body',
+            'body-medium',
+            'small',
+            'tiny',
+            'mono',
+          ],
+        },
+      ],
+    },
+  },
+})
 
 /**
  * Conditional + conflict-free class name helper.

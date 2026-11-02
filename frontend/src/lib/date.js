@@ -90,11 +90,19 @@ export function toDateInputValue(value) {
 
 /** Interpret an <input type="date"> value as end of that local day. */
 export function fromDateInputValue(value) {
-  if (!value) return null
-  const date = parseISO(value)
-  if (!isValid(date)) return null
-  date.setHours(17, 0, 0, 0)
-  return date.toISOString()
+  return endOfDayIso(value)
+}
+
+/**
+ * ISO timestamp for 17:00 local on the given day - the app's default due time,
+ * so a commitment due "today" is due end of the working day.
+ */
+export function endOfDayIso(value) {
+  const date = toDate(value)
+  if (!date) return null
+  const end = new Date(date)
+  end.setHours(17, 0, 0, 0)
+  return end.toISOString()
 }
 
 export function isToday(value) {

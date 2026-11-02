@@ -4,7 +4,6 @@ import { useAuthState } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { Logo } from '@/components/common/Logo'
-import { dataSource } from '@/config/env'
 
 /**
  * Login prompt (Feature 13 -> edge case: "If the user is not logged in, the
@@ -78,8 +77,6 @@ export function LoginPrompt({ title = 'Sign in to Threadwise', description }) {
           Continue
         </Button>
       </form>
-
-      <p className="text-tiny text-ink-subtle">Data source: {dataSource.label}</p>
     </div>
   )
 }

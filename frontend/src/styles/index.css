@@ -150,3 +150,341 @@
 @utility pb-safe-tabs {
   padding-bottom: calc(84px + var(--safe-bottom));
 }
+
+/**
+ * Skeleton placeholder surface.
+ *
+ * A single sweeping sheen (rather than a pulsing opacity) reads as "content is
+ * arriving" and keeps every loader in the app visually identical.
+ */
+@utility skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-skeleton);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      var(--color-skeleton-sheen),
+      transparent
+    );
+    animation: skeleton-sweep 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Sidebar Navigation (Scoped custom styles)
+ * ---------------------------------------------------------------------- */
+
+.tw-sidebar-rail {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 8px;
+}
+
+.tw-sidebar-rail.is-collapsed {
+  align-items: center;
+  gap: 20px;
+}
+
+/* Base Nav Item Link */
+.tw-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--color-ink-muted);
+  background-color: transparent;
+  transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  user-select: none;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  outline: none;
+}
+
+/* Collapsed mode: strictly fixed 44px square, centered */
+.tw-nav-item.is-collapsed {
+  width: 44px;
+  height: 44px;
+  justify-content: center;
+  padding: 0;
+  margin: 0 auto;
+}
+
+/* Expanded mode: full width with label, 44px height */
+.tw-nav-item.is-expanded {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  padding: 0 12px;
+  gap: 12px;
+}
+
+/* Inactive Hover state */
+.tw-nav-item:not(.is-active):not(.active):hover {
+  background-color: var(--color-overlay);
+  color: var(--color-ink);
+}
+
+.tw-nav-item:not(.is-active):not(.active) .tw-nav-icon {
+  color: var(--color-ink-muted);
+  transition: color 150ms ease, transform 150ms ease;
+}
+
+.tw-nav-item:not(.is-active):not(.active):hover .tw-nav-icon {
+  color: var(--color-ink);
+  transform: scale(1.05);
+}
+
+/* Active State - prominent, rich blue highlight */
+.tw-nav-item.is-active,
+.tw-nav-item.active {
+  background-color: rgba(79, 106, 245, 0.12);
+  background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  border-color: rgba(79, 106, 245, 0.35);
+  box-shadow: 0 1px 3px 0 rgba(79, 106, 245, 0.12);
+}
+
+.tw-nav-item.is-active:hover,
+.tw-nav-item.active:hover {
+  background-color: rgba(79, 106, 245, 0.18);
+  background-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+/* Collapsed Active State: vivid blue background + crisp border + soft blue glow */
+.tw-nav-item.is-collapsed.is-active,
+.tw-nav-item.is-collapsed.active {
+  background-color: rgba(79, 106, 245, 0.16);
+  background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  border-color: rgba(79, 106, 245, 0.5);
+  box-shadow: 0 0 0 3px rgba(79, 106, 245, 0.15), 0 2px 6px 0 rgba(79, 106, 245, 0.22);
+}
+
+.tw-nav-item.is-collapsed.is-active:hover,
+.tw-nav-item.is-collapsed.active:hover {
+  background-color: rgba(79, 106, 245, 0.22);
+  background-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  border-color: rgba(79, 106, 245, 0.65);
+}
+
+.tw-nav-item.is-active .tw-nav-icon,
+.tw-nav-item.active .tw-nav-icon {
+  color: var(--color-primary);
+}
+
+.tw-nav-item.is-active .tw-nav-label,
+.tw-nav-item.active .tw-nav-label {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Icon container: guaranteed perfect centering */
+.tw-nav-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+/* Label in expanded mode */
+.tw-nav-label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+/* Quick capture button in sidebar */
+.tw-nav-action-btn {
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  background-color: var(--color-primary);
+  color: var(--color-ink-inverse);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 150ms ease;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.tw-nav-action-btn:hover {
+  background-color: var(--color-primary-dark);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.tw-nav-action-btn:active {
+  transform: scale(0.96);
+}
+
+.tw-nav-action-btn.is-collapsed {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.tw-nav-action-btn.is-expanded {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  gap: 12px;
+}
+
+/* -------------------------------------------------------------------------
+ * React DatePicker Theming (Scoped to design system)
+ * ---------------------------------------------------------------------- */
+
+.tw-datepicker-popper,
+.react-datepicker-popper {
+  z-index: 99999 !important;
+  /* Radix Dialog (modal) sets `pointer-events: none` on <body>. The calendar is
+   * portaled into #root (a child of <body>), so it inherited `none` and became
+   * non-interactive: clicks fell through the calendar to the overlay/overlay
+   * backdrop, which dismissed the whole dialog instead of picking a date.
+   * Re-enabling pointer events here lets the calendar receive its own clicks. */
+  pointer-events: auto !important;
+}
+
+.react-datepicker {
+  font-family: var(--font-sans) !important;
+  font-size: 13px !important;
+  background-color: var(--color-card) !important;
+  color: var(--color-ink) !important;
+  border: 1px solid var(--color-line) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden;
+}
+
+.react-datepicker__header {
+  background-color: var(--color-card) !important;
+  border-bottom: 1px solid var(--color-line) !important;
+  padding: 0 !important;
+}
+
+.react-datepicker__day-names {
+  padding: 6px 8px 2px 8px !important;
+}
+
+.react-datepicker__month {
+  margin: 6px 8px !important;
+}
+
+.react-datepicker__day-name {
+  color: var(--color-ink-subtle) !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  width: 34px !important;
+  line-height: 34px !important;
+  margin: 2px !important;
+}
+
+.react-datepicker__day {
+  color: var(--color-ink) !important;
+  font-weight: 400 !important;
+  width: 34px !important;
+  line-height: 34px !important;
+  margin: 2px !important;
+  border-radius: 8px !important;
+  transition: all 120ms ease !important;
+}
+
+.react-datepicker__day:hover {
+  background-color: var(--color-overlay) !important;
+  color: var(--color-ink) !important;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: var(--color-primary) !important;
+  color: var(--color-ink-inverse) !important;
+  font-weight: 600 !important;
+}
+
+.react-datepicker__day--selected:hover,
+.react-datepicker__day--keyboard-selected:hover {
+  background-color: var(--color-primary-dark) !important;
+}
+
+/* Highlight today in the brand colour - but never let that colour clobber the
+ * label of a selected / keyboard-highlighted day. `--today` and
+ * `--keyboard-selected` share the same single-class specificity, so previously
+ * source order alone decided the winner and today's cell rendered as
+ * blue-on-blue (an empty blue square) whenever it was the pre-selected day. */
+.react-datepicker__day--today {
+  font-weight: 700 !important;
+}
+
+.react-datepicker__day--today:not(.react-datepicker__day--selected):not(.react-datepicker__day--keyboard-selected) {
+  color: var(--color-primary) !important;
+}
+
+.react-datepicker__day--outside-month {
+  color: var(--color-ink-subtle) !important;
+  opacity: 0.5 !important;
+}
+
+.react-datepicker__day--disabled {
+  color: var(--color-ink-subtle) !important;
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+}
+
+.react-datepicker__today-button {
+  background-color: var(--color-surface) !important;
+  border-top: 1px solid var(--color-line) !important;
+  color: var(--color-primary) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 8px 0 !important;
+  cursor: pointer !important;
+  transition: background-color 150ms ease !important;
+}
+
+.react-datepicker__today-button:hover {
+  background-color: var(--color-overlay) !important;
+}
+
+/* Clear button inside input */
+.react-datepicker__close-icon {
+  padding-right: 12px !important;
+}
+
+.react-datepicker__close-icon::after {
+  background-color: var(--color-ink-subtle) !important;
+  color: var(--color-card) !important;
+  font-size: 14px !important;
+  width: 18px !important;
+  height: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 9999px !important;
+}
+
+.react-datepicker__close-icon:hover::after {
+  background-color: var(--color-ink) !important;
+}
+
