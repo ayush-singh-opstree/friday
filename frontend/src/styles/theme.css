@@ -1,0 +1,145 @@
+/**
+ * Threadwise design tokens.
+ *
+ * Values are taken verbatim from docs/07_design_system.md so the web app is the
+ * source of truth for the visual language (the browser extension, built in
+ * Phase 2, mirrors these same tokens).
+ *
+ * Declaring them through Tailwind v4's `@theme` also generates utilities:
+ *   --color-primary  ->  bg-primary / text-primary / border-primary
+ *   --color-line     ->  border-line
+ *   --radius-md      ->  rounded-md
+ */
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Typography ------------------------------------------------------- */
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+
+  --text-display: 28px;
+  --text-display--line-height: 1.2;
+  --text-display--font-weight: 700;
+
+  --text-heading-1: 22px;
+  --text-heading-1--line-height: 1.3;
+  --text-heading-1--font-weight: 600;
+
+  --text-heading-2: 18px;
+  --text-heading-2--line-height: 1.35;
+  --text-heading-2--font-weight: 600;
+
+  --text-heading-3: 16px;
+  --text-heading-3--line-height: 1.4;
+  --text-heading-3--font-weight: 600;
+
+  --text-body: 15px;
+  --text-body--line-height: 1.5;
+
+  --text-body-medium: 15px;
+  --text-body-medium--line-height: 1.5;
+  --text-body-medium--font-weight: 500;
+
+  --text-small: 13px;
+  --text-small--line-height: 1.4;
+
+  --text-tiny: 11px;
+  --text-tiny--line-height: 1.3;
+  --text-tiny--font-weight: 500;
+
+  /* Brand palette ---------------------------------------------------- */
+  --color-primary: #4f6af5;
+  --color-primary-light: #eef1fe;
+  --color-primary-dark: #3b52c4;
+  --color-accent: #f5a623;
+  --color-success: #27ae60;
+  --color-warning: #f39c12;
+  --color-danger: #e74c3c;
+  --color-cold: #5dade2;
+
+  /* Neutrals --------------------------------------------------------- */
+  --color-surface: #fafafa;
+  --color-card: #ffffff;
+  --color-overlay: #f4f4f6;
+  --color-line: #e8e8ec;
+
+  --color-ink: #1a1a2e;
+  --color-ink-muted: #6b7280;
+  --color-ink-subtle: #9ca3af;
+  --color-ink-inverse: #ffffff;
+
+  /* Radius ----------------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* Elevation -------------------------------------------------------- */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* Motion (docs -> Motion and Animation Principles) ------------------ */
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* -------------------------------------------------------------------------
+ * Dark mode overrides (docs -> Dark Mode Overrides).
+ * Declared outside any @layer so they win over Tailwind's layered @theme
+ * output for either the OS preference (default) or an explicit `.dark` class.
+ * ---------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    --color-surface: #0f0f1a;
+    --color-card: #1a1a2e;
+    --color-overlay: #232338;
+    --color-line: #2a2a3e;
+    --color-primary-light: #222847;
+    --color-ink: #f0f0f5;
+    --color-ink-muted: #9ca3af;
+    --color-ink-subtle: #6b7280;
+  }
+}
+
+.dark {
+  color-scheme: dark;
+  --color-surface: #0f0f1a;
+  --color-card: #1a1a2e;
+  --color-overlay: #232338;
+  --color-line: #2a2a3e;
+  --color-primary-light: #222847;
+  --color-ink: #f0f0f5;
+  --color-ink-muted: #9ca3af;
+  --color-ink-subtle: #6b7280;
+}
+
+.light {
+  color-scheme: light;
+}
+
+/* All animations respect the user's motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Base interaction polish and the app's named utilities live in `index.css`,
+ * which owns everything that is not a design token. Keeping this file to tokens
+ * alone means one source of truth for colour/type/space (mirrored by the
+ * browser extension), and nothing here can affect layout by accident. */
+

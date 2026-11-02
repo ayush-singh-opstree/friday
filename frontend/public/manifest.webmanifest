@@ -1,0 +1,47 @@
+{
+  "name": "Threadwise",
+  "short_name": "Threadwise",
+  "description": "The relationship memory app for professionals. Never lose track of an important conversation or the work that follows from it.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FAFAFA",
+  "theme_color": "#4F6AF5",
+  "categories": ["productivity", "business"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icons/icon192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quick Capture",
+      "short_name": "Capture",
+      "description": "Capture a note, action, decision or question",
+      "url": "/?capture=1"
+    },
+    {
+      "name": "Today",
+      "short_name": "Today",
+      "description": "See what needs your attention today",
+      "url": "/today"
+    }
+  ]
+}

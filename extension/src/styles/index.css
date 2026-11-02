@@ -1,0 +1,73 @@
+/**
+ * Global extension stylesheet: base document styles + named Tailwind utilities.
+ * Design tokens live in `./theme.css`.
+ */
+@import './theme.css';
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-ink);
+    background-color: var(--color-surface);
+    font-optical-sizing: auto;
+    font-synthesis-weight: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  :where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  }
+
+  ::placeholder {
+    color: var(--color-ink-subtle);
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Named utilities.
+ * ---------------------------------------------------------------------- */
+
+/** Hides the scrollbar on horizontal strips and narrow panels. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/** Slim, theme-aware scrollbar. */
+@utility scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+
+  &::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--color-line);
+    border-radius: 9999px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

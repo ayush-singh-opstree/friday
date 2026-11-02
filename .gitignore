@@ -1,0 +1,43 @@
+# ---------------------------------------------------------------------------
+# Repository-level ignore rules.
+# Each app also has its own .gitignore - these are the shared, repo-wide rules.
+# ---------------------------------------------------------------------------
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+
+# Editor directories (keep the shared extensions recommendation)
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Dependencies and build output (belt-and-braces with the per-app files)
+node_modules/
+dist/
+dist-ssr/
+release/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment files - never commit secrets.
+# The `.env.example` templates ARE tracked.
+.env
+.env.*
+!.env.example
+
+# Playwright / test artefacts
+test-results/
+playwright-report/
