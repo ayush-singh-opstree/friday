@@ -13,6 +13,7 @@
     "verify:adapters": "node --import ./scripts/alias-loader.mjs scripts/verify-api-adapters.mjs",
     "verify:live": "node --import ./scripts/alias-loader.mjs scripts/verify-api-adapters.mjs --live",
     "verify:utilities": "node --import ./scripts/alias-loader.mjs scripts/verify-utilities.mjs",
+    "verify:notifications": "node --import ./scripts/alias-loader.mjs scripts/verify-notifications.mjs",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs"
   },

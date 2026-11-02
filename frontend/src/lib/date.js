@@ -127,6 +127,21 @@ export function commitmentUrgency(dueDate, status = 'open') {
   return URGENCY.OK
 }
 
+/**
+ * Presentation metadata for a commitment row: one status chip that answers
+ * "what state is this in?" plus the tone to render it with. Ordered by
+ * importance so the most urgent signal wins.
+ *
+ * @returns {{ key: 'completed'|'overdue'|'soon'|'open', label: string, tone: string }}
+ */
+export function commitmentStatusMeta(dueDate, status = 'open') {
+  if (status === 'completed') return { key: 'completed', label: 'Completed', tone: 'success' }
+  const urgency = commitmentUrgency(dueDate, status)
+  if (urgency === URGENCY.OVERDUE) return { key: 'overdue', label: 'Overdue', tone: 'danger' }
+  if (urgency === URGENCY.SOON) return { key: 'soon', label: 'Due soon', tone: 'warning' }
+  return { key: 'open', label: 'Open', tone: 'neutral' }
+}
+
 /** Human phrasing for commitment rows: "Overdue by 2 days", "Due tomorrow". */
 export function humaniseDueDate(dueDate, status = 'open') {
   const date = toDate(dueDate)

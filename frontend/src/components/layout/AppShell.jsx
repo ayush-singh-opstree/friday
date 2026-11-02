@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  Bell,
   CaretDoubleLeft,
   CaretDoubleRight,
   CheckSquare,
@@ -19,6 +18,7 @@ import { SearchOverlay } from '@/components/search/SearchOverlay'
 import { Wordmark, Logo } from '@/components/common/Brand'
 import { OfflineBanner } from '@/components/common/System'
 import { Toaster } from '@/components/common/Toaster'
+import { NotificationsBell } from '@/components/common/NotificationsBell'
 import { IconButton } from '@/components/ui/Button'
 import {
   DropdownMenu,
@@ -224,9 +224,7 @@ export function AppShell({ children }) {
                   <MagnifyingGlass size={18} />
                 </IconButton>
               </Tooltip>
-              <IconButton label="Notifications">
-                <Bell size={18} />
-              </IconButton>
+              <NotificationsBell />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

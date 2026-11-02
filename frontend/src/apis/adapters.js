@@ -228,10 +228,45 @@ export function toSummary(dto) {
     threadId: dto.thread_id,
     userId: dto.user_id ?? null,
     type: dto.type,
-    content: dto.content ?? {},
+    content: toSummaryContent(dto.content),
     sourceCaptures: dto.source_captures ?? [],
     generatedAt: dto.generated_at,
     isStale: Boolean(dto.is_stale),
+  }
+}
+
+/**
+ * Normalise `Summary.content` onto the camelCase keys the UI reads.
+ *
+ * The backend stores this blob in snake_case (`last_contact_summary`,
+ * `key_topics`, `open_commitments`, `next_steps`, `talking_points`) while the
+ * Brief tab reads camelCase. Without this translation every field lookup is
+ * `undefined`, so the card renders its header/footer but no content. Already
+ * camelCase payloads (the demo mock) pass straight through, and any extra keys
+ * are preserved so the model can add fields without breaking the client.
+ */
+export function toSummaryContent(content) {
+  const source = content ?? {}
+  const first = (...keys) => {
+    for (const key of keys) {
+      if (source[key] !== undefined && source[key] !== null) return source[key]
+    }
+    return undefined
+  }
+  const asList = (value) => {
+    if (Array.isArray(value)) return value
+    if (value === undefined || value === null || value === '') return []
+    return [value]
+  }
+
+  return {
+    ...source,
+    lastContactDate: first('lastContactDate', 'last_contact_date') ?? null,
+    lastContactSummary: first('lastContactSummary', 'last_contact_summary') ?? '',
+    keyTopics: asList(first('keyTopics', 'key_topics')),
+    openCommitments: asList(first('openCommitments', 'open_commitments')),
+    nextSteps: asList(first('nextSteps', 'next_steps')),
+    talkingPoints: asList(first('talkingPoints', 'talking_points')),
   }
 }
 
@@ -494,4 +529,84 @@ export function groupSearchResults(response) {
   }
 
   return grouped
+}
+
+/* ------------------------------------------------------- notifications --- */
+
+/**
+ * NotificationResponse -> Notification (camelCase view model).
+ *
+ * Every notification carries a `deepLinkUrl` into the app (Feature 14 edge case:
+ * "Each notification includes a deep link to the relevant thread or commitment").
+ */
+export function toNotification(dto) {
+  if (!dto) return null
+  return {
+    id: dto.id,
+    type: dto.type,
+    title: dto.title,
+    body: dto.body,
+    referenceType: dto.reference_type ?? null,
+    referenceId: dto.reference_id ?? null,
+    deepLinkUrl: dto.deep_link_url ?? '',
+    scheduledAt: dto.scheduled_at ?? null,
+    sentAt: dto.sent_at ?? null,
+    isRead: Boolean(dto.is_read),
+  }
+}
+
+/**
+ * GET /notifications wraps its payload as
+ * `{ data, total, unread_count, limit, offset }`.
+ * @returns {{ items: any[], unreadCount: number, total: number }}
+ */
+export function toNotificationList(response) {
+  const rows = Array.isArray(response) ? response : (response?.data ?? [])
+  return {
+    items: rows.map(toNotification).filter(Boolean),
+    unreadCount: response?.unread_count ?? 0,
+    total: response?.total ?? rows.length,
+  }
+}
+
+/** camelCase preference key -> the snake_case key the backend persists. */
+const NOTIFICATION_PREF_KEYS = {
+  dailyDigest: 'daily_digest',
+  commitmentDue: 'commitment_due',
+  goingCold: 'going_cold',
+  preMeetingBrief: 'pre_meeting_brief',
+  reengagementDigest: 'reengagement_digest',
+}
+
+/**
+ * `/notifications/preferences` -> the flat preference view model.
+ * Tolerates both the backend's snake_case keys and an already-camelCase payload
+ * (the demo mock returns camelCase), so this adapter is safe for either source.
+ */
+export function toNotificationPreferences(dto) {
+  const source = dto?.preferences ?? dto ?? {}
+  return {
+    dailyDigest: source.daily_digest ?? source.dailyDigest ?? true,
+    commitmentDue: source.commitment_due ?? source.commitmentDue ?? true,
+    goingCold: source.going_cold ?? source.goingCold ?? true,
+    preMeetingBrief: source.pre_meeting_brief ?? source.preMeetingBrief ?? true,
+    reengagementDigest: source.reengagement_digest ?? source.reengagementDigest ?? true,
+    digestTime: source.digest_time ?? source.digestTime ?? '08:00',
+    digestEnabled: source.digest_enabled ?? source.digestEnabled ?? true,
+    emailDigestEnabled: source.email_digest_enabled ?? source.emailDigestEnabled ?? false,
+  }
+}
+
+/** camelCase preference patch -> the snake_case body PATCH /preferences expects. */
+export function toNotificationPreferencesPatch(patch = {}) {
+  const body = {}
+  for (const [camel, snake] of Object.entries(NOTIFICATION_PREF_KEYS)) {
+    if (patch[camel] !== undefined) body[snake] = Boolean(patch[camel])
+  }
+  if (patch.digestTime !== undefined) body.digest_time = patch.digestTime
+  if (patch.digestEnabled !== undefined) body.digest_enabled = Boolean(patch.digestEnabled)
+  if (patch.emailDigestEnabled !== undefined) {
+    body.email_digest_enabled = Boolean(patch.emailDigestEnabled)
+  }
+  return body
 }

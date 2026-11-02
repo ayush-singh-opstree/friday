@@ -4,18 +4,14 @@ import {
   ArrowRight,
   Check,
   GearSix,
-  Globe,
   MagnifyingGlass,
-  Plus,
   Snowflake,
   Sparkle,
-  UserCircle,
 } from '@/components/icons'
 import { ProtectedView } from '@/authorization'
 import { Logo } from '@/components/common/Logo'
 import { ThemeToggle } from '@/components/common/ThemeToggle'
 import {
-  AttentionScoreBadge,
   Avatar,
   Button,
   Card,
@@ -32,23 +28,21 @@ import {
   Textarea,
 } from '@/components/ui'
 import { CAPTURE_TYPES } from '@/config/constants'
-import {
-  useAttention,
-  usePageContext,
-  usePeople,
-  usePersonMatch,
-  useQuickCapture,
-  useThreads,
-} from '@/hooks'
+import { usePeople, useQuickCapture, useThreads } from '@/hooks'
 import { searchApi } from '@/apis'
 import { useDebounce } from '@/hooks/useDebounce'
 import { openOptions } from '@/lib/messaging'
 import { relativeTime } from '@/lib/date'
 import { usePeopleStore } from '@/store'
 import { cn } from '@/lib/utils'
+import { ThreadSessionFlow } from '@/components/threads/ThreadSessionFlow'
 
 /**
- * Side panel - the companion for contextual relationship memory.
+ * Side panel - Threadwise Companion.
+ * Clean contextual companion:
+ * - Removed Page scraping feature.
+ * - Removed Needs Attention.
+ * - Focused on Threads & Capture Sessions, People Directory, Search, and Quick Capture.
  */
 export function SidePanelPage() {
   return (
@@ -74,25 +68,21 @@ export function SidePanelPage() {
 }
 
 function SidePanelBody() {
-  const page = usePageContext()
-  const match = usePersonMatch(page.context)
-  const { topThreads, isLoading } = useAttention({ autoLoad: true })
   const capture = useQuickCapture({ source: 'extension' })
-  const [tab, setTab] = useState('page')
+  const [tab, setTab] = useState('threads')
 
   return (
     <div className="flex flex-1 flex-col gap-3.5 p-3.5">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList aria-label="Companion sections" className="p-1">
-          <TabsTrigger value="page">Page</TabsTrigger>
+          <TabsTrigger value="threads">Threads & Session</TabsTrigger>
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="search">Search</TabsTrigger>
-          <TabsTrigger value="today">Today</TabsTrigger>
-          <TabsTrigger value="capture">Capture</TabsTrigger>
+          <TabsTrigger value="capture">Quick Capture</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="page">
-          <PageContextPanel page={page} match={match} capture={capture} />
+        <TabsContent value="threads">
+          <ThreadSessionFlow />
         </TabsContent>
 
         <TabsContent value="people">
@@ -101,33 +91,6 @@ function SidePanelBody() {
 
         <TabsContent value="search">
           <SearchPanel />
-        </TabsContent>
-
-        <TabsContent value="today">
-          {isLoading && topThreads.length === 0 ? (
-            <LoadingState label="Reading your threads…" />
-          ) : topThreads.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-line bg-card/60 p-6 text-center">
-              <p className="text-small font-medium text-ink">All clear</p>
-              <p className="mt-1 text-tiny text-ink-muted">Nothing urgent needs attention right now.</p>
-            </div>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {topThreads.map((thread) => (
-                <li key={thread.id}>
-                  <Card className="flex items-center gap-3 p-3 hover:border-primary/40 transition-colors">
-                    <AttentionScoreBadge score={thread.attentionScore ?? 0} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-small font-semibold text-ink">{thread.title}</p>
-                      <p className="truncate text-tiny text-ink-muted">
-                        {thread.attentionReason || `Last contact ${relativeTime(thread.lastInteractionAt)}`}
-                      </p>
-                    </div>
-                  </Card>
-                </li>
-              ))}
-            </ul>
-          )}
         </TabsContent>
 
         <TabsContent value="capture">
@@ -161,7 +124,7 @@ function PeoplePanel() {
         <button
           type="button"
           onClick={() => selectPerson(null)}
-          className="inline-flex items-center gap-1 text-tiny font-medium text-primary hover:underline"
+          className="inline-flex items-center gap-1 text-tiny font-medium text-primary hover:underline cursor-pointer"
         >
           <ArrowLeft size={12} weight="bold" /> Back to directory
         </button>
@@ -192,8 +155,7 @@ function PeoplePanel() {
             <ul className="flex flex-col gap-1.5">
               {personThreads.map((thread) => (
                 <li key={thread.id}>
-                  <Card className="flex items-center gap-2.5 p-2.5">
-                    <AttentionScoreBadge score={thread.attentionScore ?? 0} />
+                  <Card className="flex items-center justify-between gap-2.5 p-2.5 hover:border-primary/40 transition-colors">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-small font-semibold text-ink">{thread.title}</p>
                       <p className="truncate text-tiny text-ink-muted">
@@ -460,138 +422,5 @@ function CaptureForm({ capture }) {
         <ArrowRight size={13} weight="bold" />
       </Button>
     </form>
-  )
-}
-
-function PageContextPanel({ page, match, capture }) {
-  const personThreads = usePeopleStore((state) => state.selectedPersonThreads)
-  const personCommitments = usePeopleStore((state) => state.selectedPersonCommitments)
-  const selectPerson = usePeopleStore((state) => state.selectPerson)
-  const createPerson = usePeopleStore((state) => state.createPerson)
-
-  const personId = match.person?.id ?? null
-
-  useEffect(() => {
-    if (personId) selectPerson(personId)
-  }, [personId, selectPerson])
-
-  if (page.status === 'loading') return <LoadingState label="Reading this page…" />
-
-  if (page.status === 'unsupported' || !page.isApproved) {
-    return (
-      <EmptyState
-        icon={<Globe size={24} weight="duotone" />}
-        title="Nothing to surface here"
-        description="The companion surfaces context on LinkedIn profiles and Gmail. Open one of those to see relationship data."
-      />
-    )
-  }
-
-  if (match.state === 'matched') {
-    const openCommitments = personCommitments.filter((row) => row.status === 'open')
-    return (
-      <div className="flex flex-col gap-3">
-        {/* Matched Profile Card */}
-        <Card className="flex items-start gap-3 p-3.5 bg-gradient-to-br from-card to-overlay/40">
-          <Avatar name={match.person.fullName} size="md" className="ring-2 ring-primary/20" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <p className="truncate text-body-medium font-bold text-ink">{match.person.fullName}</p>
-              <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-bold text-success uppercase">
-                Matched
-              </span>
-            </div>
-            <p className="truncate text-small text-ink-muted">
-              {[match.person.role, match.person.organisation].filter(Boolean).join(' · ') ||
-                'No role recorded'}
-            </p>
-            <p className="mt-1 text-tiny text-ink-subtle">{match.reason}</p>
-          </div>
-        </Card>
-
-        {personThreads.length > 0 ? (
-          <section>
-            <SectionHeader label="Threads" />
-            <ul className="flex flex-col gap-1.5">
-              {personThreads.map((thread) => (
-                <li key={thread.id}>
-                  <Card className="flex items-center gap-2.5 p-2.5 hover:border-primary/40 transition-colors">
-                    <AttentionScoreBadge score={thread.attentionScore ?? 0} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-small font-semibold text-ink">{thread.title}</p>
-                      <p className="truncate text-tiny text-ink-muted">
-                        {relativeTime(thread.lastInteractionAt)}
-                      </p>
-                    </div>
-                  </Card>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        {openCommitments.length > 0 ? (
-          <section>
-            <SectionHeader label="Open commitments" />
-            <ul className="flex flex-col gap-1.5">
-              {openCommitments.map((commitment) => (
-                <li
-                  key={commitment.id}
-                  className="flex items-center gap-2.5 rounded-xl border border-line bg-card p-2.5 text-small text-ink shadow-xs"
-                >
-                  <Snowflake size={13} className="shrink-0 text-cold" />
-                  <span className="truncate">{commitment.description}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        <Card className="p-3">
-          <SectionHeader label="Log quick note" />
-          <CaptureForm capture={capture} />
-        </Card>
-      </div>
-    )
-  }
-
-  // Unmatched: offer to add detected person
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="rounded-2xl border border-dashed border-line bg-card/60 p-5 text-center flex flex-col items-center gap-2.5">
-        <div className="flex size-11 items-center justify-center rounded-xl bg-overlay text-ink-subtle">
-          <UserCircle size={24} />
-        </div>
-        <div>
-          <h3 className="text-heading-3 font-semibold text-ink">Not in your directory</h3>
-          <p className="mt-1 text-small text-ink-muted leading-relaxed">
-            {page.context?.name
-              ? `"${page.context.name}" was detected on this page. Add them to track promises and conversation history.`
-              : 'No person was detected on this page.'}
-          </p>
-        </div>
-        {page.context?.name ? (
-          <Button
-            size="sm"
-            onClick={() =>
-              createPerson({
-                fullName: page.context.name,
-                organisation: page.context.organisation ?? undefined,
-                linkedInUrl: page.context.url ?? undefined,
-              })
-            }
-            className="mt-1 gap-1.5 shadow-sm"
-          >
-            <Plus size={14} weight="bold" />
-            Add to Threadwise
-          </Button>
-        ) : null}
-      </div>
-
-      <Card className="p-3">
-        <SectionHeader label="Capture note" />
-        <CaptureForm capture={capture} />
-      </Card>
-    </div>
   )
 }

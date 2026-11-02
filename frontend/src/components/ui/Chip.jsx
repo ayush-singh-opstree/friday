@@ -15,6 +15,7 @@ const TONES = {
   question: 'bg-[#FCE4EC] text-[#E91E63]',
   cold: 'bg-[#E3F2FD] text-[#1565C0]',
   danger: 'bg-danger/10 text-danger',
+  warning: 'bg-warning/12 text-warning',
   success: 'bg-success/12 text-success',
 }
 

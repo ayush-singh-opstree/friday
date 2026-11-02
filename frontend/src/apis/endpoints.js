@@ -57,7 +57,6 @@ export const ENDPOINTS = Object.freeze({
     summarise: (threadId) => `/ai/summarise/${threadId}`,
     brief: (threadId) => `/ai/brief/${threadId}`,
     classify: () => '/ai/classify',
-    draftFollowUp: (threadId) => `/ai/draft-follow-up/${threadId}`,
   },
 
   attention: {
@@ -72,10 +71,16 @@ export const ENDPOINTS = Object.freeze({
     push: () => '/sync/batch',
   },
 
+  // Mirrors backend routers/notifications.py exactly (Feature 14).
   notifications: {
     list: () => '/notifications',
+    create: () => '/notifications',
     read: (id) => `/notifications/${id}/read`,
+    readAll: () => '/notifications/read-all',
+    remove: (id) => `/notifications/${id}`,
     preferences: () => '/notifications/preferences',
-    subscribe: () => '/notifications/subscribe',
+    // Evaluate background triggers (commitments due < 24h, going-cold threads)
+    // and materialise new in-app notifications server-side.
+    checkTriggers: () => '/notifications/check-triggers',
   },
 })

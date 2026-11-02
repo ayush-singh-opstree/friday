@@ -5,6 +5,10 @@ import {
   groupSearchResults,
   toCommitment,
   toList,
+  toNotification,
+  toNotificationList,
+  toNotificationPreferences,
+  toNotificationPreferencesPatch,
   toSummary,
   toThread,
   toTodayPayload,
@@ -74,20 +78,16 @@ export const aiApi = {
   },
   /** Classify free-form Brain Dump lines into thread assignments. */
   classify: async (lines) => {
-    if (env.useMockApi) return http.post(ENDPOINTS.ai.classify(), { lines })
-    const content = Array.isArray(lines) ? lines.join('\n') : String(lines ?? '')
-    const res = await http.post(ENDPOINTS.ai.classify(), { content })
+    const payload = env.useMockApi ? { lines } : { content: Array.isArray(lines) ? lines.join('\n') : String(lines ?? '') }
+    const res = await http.post(ENDPOINTS.ai.classify(), payload)
     return {
-      suggestedType: res?.suggested_type ?? 'note',
-      suggestedThreadId: res?.suggested_thread_id ?? null,
+      suggestedType: res?.suggestedType ?? res?.suggested_type ?? 'note',
+      suggestedThreadId: res?.suggestedThreadId ?? res?.suggested_thread_id ?? null,
       confidence: res?.confidence ?? 0,
       reasoning: res?.reasoning ?? '',
     }
   },
-  draftFollowUp: (threadId) =>
-    env.useMockApi
-      ? http.post(ENDPOINTS.ai.draftFollowUp(threadId))
-      : http.post(ENDPOINTS.ai.brief(threadId)),
+  draftFollowUp: (threadId) => http.post(ENDPOINTS.ai.brief(threadId)),
 }
 
 /** Cross-entity search (Feature 12 / Requirement 9). */
@@ -110,12 +110,62 @@ export const syncApi = {
   push: (operations) => http.post(ENDPOINTS.sync.push(), { operations }),
 }
 
-/** Notifications (Requirement 10). */
+/** Notifications (Feature 14 / Requirement 10). */
 export const notificationsApi = {
-  list: () => http.get(ENDPOINTS.notifications.list()),
-  markRead: (notificationId) => http.patch(ENDPOINTS.notifications.read(notificationId)),
-  getPreferences: () => http.get(ENDPOINTS.notifications.preferences()),
-  updatePreferences: (patch) => http.patch(ENDPOINTS.notifications.preferences(), patch),
-  /** Register a Web Push subscription with the server. */
-  subscribe: (subscription) => http.post(ENDPOINTS.notifications.subscribe(), subscription),
+  /**
+   * List notifications plus the unread badge count.
+   * @param {{ isRead?: boolean, type?: string, limit?: number, offset?: number }} [params]
+   * @returns {Promise<{ items: any[], unreadCount: number, total: number }>}
+   */
+  list: async (params = {}) => {
+    if (env.useMockApi) return http.get(ENDPOINTS.notifications.list(), { query: params })
+
+    const query = {}
+    if (params.isRead !== undefined) query.is_read = params.isRead
+    if (params.type) query.type = params.type
+    if (params.limit !== undefined) query.limit = params.limit
+    if (params.offset !== undefined) query.offset = params.offset
+    return toNotificationList(await http.get(ENDPOINTS.notifications.list(), { query }))
+  },
+
+  /** @param {{ type: string, title: string, body: string }} payload */
+  create: async (payload) => {
+    if (env.useMockApi) return http.post(ENDPOINTS.notifications.create(), payload)
+    return toNotification(await http.post(ENDPOINTS.notifications.create(), payload))
+  },
+
+  markRead: async (notificationId) => {
+    if (env.useMockApi) return http.patch(ENDPOINTS.notifications.read(notificationId))
+    return toNotification(await http.patch(ENDPOINTS.notifications.read(notificationId)))
+  },
+
+  markAllRead: () => http.post(ENDPOINTS.notifications.readAll()),
+
+  remove: (notificationId) => http.delete(ENDPOINTS.notifications.remove(notificationId)),
+
+  /** @returns {Promise<import('@/types/today').NotificationPreferences & {digestTime:string, digestEnabled:boolean, emailDigestEnabled:boolean}>} */
+  getPreferences: async () => {
+    if (env.useMockApi) return http.get(ENDPOINTS.notifications.preferences())
+    return toNotificationPreferences(await http.get(ENDPOINTS.notifications.preferences()))
+  },
+
+  /** @param {object} patch camelCase subset of the preference view model. */
+  updatePreferences: async (patch) => {
+    const body = toNotificationPreferencesPatch(patch)
+    if (env.useMockApi) return http.patch(ENDPOINTS.notifications.preferences(), body)
+    return toNotificationPreferences(await http.patch(ENDPOINTS.notifications.preferences(), body))
+  },
+
+  /**
+   * Ask the server to evaluate background triggers (commitments due within 24h,
+   * going-cold threads) and materialise any new in-app notifications.
+   */
+  checkTriggers: async () => {
+    if (env.useMockApi) return http.post(ENDPOINTS.notifications.checkTriggers())
+    const res = await http.post(ENDPOINTS.notifications.checkTriggers())
+    return {
+      generatedCount: res?.generated_count ?? 0,
+      items: (res?.notifications ?? []).map(toNotification).filter(Boolean),
+    }
+  },
 }

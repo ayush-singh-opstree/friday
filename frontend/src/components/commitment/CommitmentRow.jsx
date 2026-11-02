@@ -1,54 +1,80 @@
-import { Check } from '@/components/icons'
-import { UrgencyDot } from '@/components/ui/Badge'
-import { humaniseDueDate } from '@/lib/date'
+import { ArrowCounterClockwise, Check } from '@/components/icons'
+import { Chip } from '@/components/ui/Chip'
+import { commitmentStatusMeta, humaniseDueDate } from '@/lib/date'
 import { cn } from '@/lib/utils'
 
 /**
- * Commitment row (Feature 5): urgency dot, description, thread, owner and due
- * date, with an inline complete affordance.
+ * Commitment row (Feature 5).
+ *
+ * Answers the three questions a row should answer at a glance:
+ *   1. How do I complete it?  -> a checkbox that shows a tick on hover, plus an
+ *      explicit, labelled "Complete" button that appears on hover / focus.
+ *   2. What is its status?    -> a status chip (Overdue / Due soon / Open /
+ *      Completed) alongside the humanised due date.
+ *   3. Who owns it, and for which thread? -> a meta line.
  */
 export function CommitmentRow({
   commitment,
   onComplete,
+  onReopen,
   showThread = true,
   className,
   busy = false,
 }) {
-  const owner =
-    commitment.ownerType === 'person' ? (commitment.ownerPerson?.fullName ?? 'Them') : 'Me'
   const completed = commitment.status === 'completed'
+  const owner =
+    commitment.ownerType === 'person' ? (commitment.ownerPerson?.fullName ?? 'Them') : 'Mine'
+  const status = commitmentStatusMeta(commitment.dueDate, commitment.status)
+  const due = humaniseDueDate(commitment.dueDate, commitment.status)
 
   return (
     <div
       className={cn(
-        'group flex items-start gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 hover:bg-overlay',
-        completed && 'opacity-55',
+        'group flex items-start gap-3 px-3.5 py-3 transition-colors hover:bg-overlay/60',
         className,
       )}
     >
-      {/* Complete button */}
+      {/* 1. Unambiguous completion affordance: a real checkbox that previews a
+             tick on hover, with a tooltip-free `title` fallback. */}
       <button
         type="button"
-        onClick={() => onComplete?.(commitment)}
-        disabled={completed || busy || !onComplete}
-        aria-label={completed ? 'Completed' : `Mark "${commitment.description}" complete`}
-        className={cn(
-          'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-150',
+        onClick={() => (completed ? onReopen?.(commitment) : onComplete?.(commitment))}
+        disabled={busy || (completed ? !onReopen : !onComplete)}
+        title={completed ? 'Completed - click to reopen' : 'Mark as complete'}
+        aria-label={
           completed
-            ? 'border-success bg-success text-white'
-            : 'border-line bg-card hover:border-success hover:bg-success/10 hover:text-success',
+            ? `Reopen "${commitment.description}"`
+            : `Mark "${commitment.description}" complete`
+        }
+        className={cn(
+          'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-150',
+          completed
+            ? 'border-success bg-success text-ink-inverse'
+            : 'border-ink-subtle/60 bg-card text-transparent hover:border-success hover:bg-success/15 hover:text-success',
+          'disabled:cursor-not-allowed disabled:opacity-50',
         )}
       >
-        {completed ? <Check size={10} weight="bold" /> : null}
+        <Check size={12} weight="bold" />
       </button>
 
+      {/* 2. Content */}
       <div className="min-w-0 flex-1">
-        <p className={cn('text-body-medium text-ink', completed && 'line-through')}>
-          {commitment.description}
-        </p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-tiny text-ink-muted">
-          <UrgencyDot dueDate={commitment.dueDate} status={commitment.status} />
-          <span>{humaniseDueDate(commitment.dueDate, commitment.status)}</span>
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
+          <p
+            className={cn(
+              'min-w-0 flex-1 text-body-medium text-ink',
+              completed && 'text-ink-muted line-through',
+            )}
+          >
+            {commitment.description}
+          </p>
+          <Chip tone={status.tone} className="shrink-0">
+            {status.label}
+          </Chip>
+        </div>
+
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-tiny text-ink-muted">
+          <span className={cn(status.key === 'overdue' && 'font-semibold text-danger')}>{due}</span>
           <span aria-hidden="true">·</span>
           <span>{owner}</span>
           {showThread && commitment.threadTitle ? (
@@ -57,8 +83,32 @@ export function CommitmentRow({
               <span className="truncate">{commitment.threadTitle}</span>
             </>
           ) : null}
-        </p>
+        </div>
       </div>
+
+      {/* 3. An explicit, labelled action so completing never has to be guessed */}
+      {completed ? (
+        onReopen ? (
+          <button
+            type="button"
+            onClick={() => onReopen(commitment)}
+            className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-tiny font-medium text-ink-muted opacity-0 transition-all hover:border-primary/40 hover:bg-primary-light hover:text-primary focus-visible:opacity-100 group-hover:opacity-100 sm:flex"
+          >
+            <ArrowCounterClockwise size={12} weight="bold" />
+            Reopen
+          </button>
+        ) : null
+      ) : onComplete ? (
+        <button
+          type="button"
+          onClick={() => onComplete(commitment)}
+          disabled={busy}
+          className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-tiny font-medium text-ink-muted opacity-0 transition-all hover:border-success/40 hover:bg-success/10 hover:text-success focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-50 sm:flex"
+        >
+          <Check size={12} weight="bold" />
+          Complete
+        </button>
+      ) : null}
     </div>
   )
 }

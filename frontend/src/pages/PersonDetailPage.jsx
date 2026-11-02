@@ -343,7 +343,7 @@ export function PersonDetailPage() {
                 </p>
               </div>
             ) : (
-              <Card className="rounded-2xl border-line/80 p-2 divide-y divide-line/60 shadow-xs">
+              <Card className="divide-y divide-line/60 overflow-hidden rounded-2xl border-line/80 p-0 shadow-xs">
                 {openCommitments.map((commitment) => (
                   <CommitmentRow key={commitment.id} commitment={commitment} showThread={true} />
                 ))}
