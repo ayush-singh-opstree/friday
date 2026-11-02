@@ -57,3 +57,11 @@ try:
 except ImportError:
     pass
 
+# Notifications
+try:
+    from app.routers.notifications import router as notifications_router
+    ROUTERS.append(notifications_router)
+except ImportError:
+    pass
+
+
