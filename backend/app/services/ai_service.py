@@ -1,14 +1,5 @@
 """
-services/ai_service.py — AI Intelligence Service for Threadwise using Google Gemini API.
-
-Capabilities:
-1. Summarise ('where_we_left_off') - Generates or retrieves summary of thread.
-2. Pre-meeting brief ('pre_meeting_brief') - Generates talking points, key context, and open commitments.
-3. Classify capture - Predicts capture type (note/action/decision/question) and thread relevance.
-
-Dual mode:
-- If GEMINI_API_KEY is configured: Calls Google Gemini API (gemini-2.5-flash via REST/httpx).
-- If GEMINI_API_KEY is empty or call fails: Deterministic structured extraction fallback based on thread captures and commitments (guaranteeing offline/hackathon reliability).
+services/ai_service.py — AI Intelligence Service for Threadwise with Gemini API.
 """
 import json
 import uuid
@@ -21,11 +12,10 @@ from sqlalchemy.orm import Session
 
 from app.config import GEMINI_API_KEY, GEMINI_MODEL
 from app.models import (
-    Capture,
-    CaptureStatus,
-    CaptureType,
     Commitment,
     CommitmentStatus,
+    SubThread,
+    SubThreadType,
     Summary,
     SummaryType,
     Thread,
@@ -55,9 +45,6 @@ class AIService:
         return thread
 
     def _call_gemini(self, system_instruction: str, user_prompt: str) -> Optional[dict]:
-        """
-        Call Gemini generateContent endpoint with JSON response mode.
-        """
         if not GEMINI_API_KEY:
             return None
 
@@ -96,16 +83,16 @@ class AIService:
         return None
 
     def _fallback_summary(
-        self, thread: Thread, captures: list[Capture], commitments: list[Commitment]
+        self, thread: Thread, captures: list[SubThread], commitments: list[Commitment]
     ) -> dict:
         last_contact = captures[0].captured_at if captures else thread.last_interaction_at
         last_summary = (
             captures[0].content[:150]
             if captures
-            else f"Recent interaction regarding {thread.title}."
+            else f"Recent interaction regarding {thread.agenda}."
         )
 
-        topics = [c.content[:40] for c in captures[:3]] or [thread.title]
+        topics = [c.content[:40] for c in captures[:3]] or [thread.agenda]
         open_c = [c.description for c in commitments if c.status == CommitmentStatus.open][:5]
         next_steps = open_c[:2] if open_c else ["Review upcoming deliverables"]
 
@@ -118,12 +105,12 @@ class AIService:
         }
 
     def _fallback_brief(
-        self, thread: Thread, captures: list[Capture], commitments: list[Commitment]
+        self, thread: Thread, captures: list[SubThread], commitments: list[Commitment]
     ) -> dict:
         summary_content = self._fallback_summary(thread, captures, commitments)
         summary_content["talking_points"] = [
             f"Status check on: {c.description}" for c in commitments if c.status == CommitmentStatus.open
-        ] or [f"Catch up on {thread.title}", "Confirm mutual next steps"]
+        ] or [f"Catch up on {thread.agenda}", "Confirm mutual next steps"]
         return summary_content
 
     def summarise_thread(
@@ -131,7 +118,6 @@ class AIService:
     ) -> AISummariseResponse:
         thread = self._get_thread_or_404(db, thread_id, user_id)
 
-        # Check existing cached summary
         if not force_refresh:
             cached = (
                 db.query(Summary)
@@ -151,15 +137,14 @@ class AIService:
                 )
 
         captures = (
-            db.query(Capture)
-            .filter(Capture.thread_id == thread_id, Capture.user_id == user_id)
-            .order_by(Capture.captured_at.desc())
+            db.query(SubThread)
+            .filter(SubThread.thread_id == thread_id, SubThread.user_id == user_id)
+            .order_by(SubThread.captured_at.desc())
             .limit(10)
             .all()
         )
         commitments = commitment_repository.get_open_for_thread(db, thread_id)
 
-        # Call Gemini or fallback
         llm_payload = None
         if GEMINI_API_KEY:
             sys_prompt = (
@@ -173,16 +158,15 @@ class AIService:
                 "}"
             )
             user_data = (
-                f"Thread Title: {thread.title}\n"
+                f"Thread Agenda: {thread.agenda}\n"
                 f"Thread Description: {thread.description or ''}\n"
-                f"Recent Captures:\n" + "\n".join([f"- [{c.type.value}] {c.content}" for c in captures]) + "\n"
-                f"Open Commitments:\n" + "\n".join([f"- {cm.description} (Due: {cm.due_date or 'None'})" for cm in commitments])
+                f"Recent SubThreads/Captures:\n" + "\n".join([f"- [{c.type.value}] {c.content}" for c in captures]) + "\n"
+                f"Open Commitments:\n" + "\n".join([f"- {cm.description} (Deadline: {cm.deadline or 'None'})" for cm in commitments])
             )
             llm_payload = self._call_gemini(sys_prompt, user_data)
 
         content = llm_payload or self._fallback_summary(thread, captures, commitments)
 
-        # Invalidate old summaries
         db.query(Summary).filter(
             Summary.thread_id == thread_id,
             Summary.type == SummaryType.where_we_left_off,
@@ -200,7 +184,6 @@ class AIService:
         )
         db.add(summary_rec)
 
-        # Emit timeline event
         event = TimelineEvent(
             id=str(uuid.uuid4()),
             thread_id=thread_id,
@@ -225,9 +208,9 @@ class AIService:
         thread = self._get_thread_or_404(db, thread_id, user_id)
 
         captures = (
-            db.query(Capture)
-            .filter(Capture.thread_id == thread_id, Capture.user_id == user_id)
-            .order_by(Capture.captured_at.desc())
+            db.query(SubThread)
+            .filter(SubThread.thread_id == thread_id, SubThread.user_id == user_id)
+            .order_by(SubThread.captured_at.desc())
             .limit(10)
             .all()
         )
@@ -247,10 +230,10 @@ class AIService:
                 "}"
             )
             user_data = (
-                f"Thread Title: {thread.title}\n"
+                f"Thread Agenda: {thread.agenda}\n"
                 f"Thread Description: {thread.description or ''}\n"
-                f"Recent Captures:\n" + "\n".join([f"- [{c.type.value}] {c.content}" for c in captures]) + "\n"
-                f"Open Commitments:\n" + "\n".join([f"- {cm.description} (Due: {cm.due_date or 'None'})" for cm in commitments])
+                f"Recent SubThreads/Captures:\n" + "\n".join([f"- [{c.type.value}] {c.content}" for c in captures]) + "\n"
+                f"Open Commitments:\n" + "\n".join([f"- {cm.description} (Deadline: {cm.deadline or 'None'})" for cm in commitments])
             )
             llm_payload = self._call_gemini(sys_prompt, user_data)
 
@@ -287,15 +270,15 @@ class AIService:
         self, db: Session, user_id: str, content: str
     ) -> AIClassifyResponse:
         threads = thread_repository.get_active_for_attention(db, user_id)
-        threads_summary = [{"id": t.id, "title": t.title} for t in threads]
+        threads_summary = [{"id": t.id, "agenda": t.agenda} for t in threads]
 
         if GEMINI_API_KEY:
             sys_prompt = (
-                "You are an intelligent classification agent for quick captures. "
-                "Allowed types: 'note', 'action', 'decision', 'question'.\n"
+                "You are an intelligent classification agent for meeting captures and subthreads. "
+                "Allowed types: 'note', 'follow_up', 'question', 'commitment', 'decision'.\n"
                 "Return strict JSON matching:\n"
                 "{\n"
-                '  "suggested_type": "note" | "action" | "decision" | "question",\n'
+                '  "suggested_type": "note" | "follow_up" | "question" | "commitment" | "decision",\n'
                 '  "suggested_thread_id": string or null,\n'
                 '  "confidence": float between 0.0 and 1.0,\n'
                 '  "reasoning": "brief explanation"\n'
@@ -308,8 +291,8 @@ class AIService:
             llm_res = self._call_gemini(sys_prompt, user_prompt)
             if llm_res and "suggested_type" in llm_res:
                 raw_type = str(llm_res.get("suggested_type", "note")).lower()
-                valid_types = {t.value: t for t in CaptureType}
-                final_type = valid_types.get(raw_type, CaptureType.note)
+                valid_types = {t.value: t for t in SubThreadType}
+                final_type = valid_types.get(raw_type, SubThreadType.note)
 
                 return AIClassifyResponse(
                     suggested_type=final_type,
@@ -320,26 +303,30 @@ class AIService:
 
         # Fallback heuristic classifier
         content_lower = content.lower()
-        if any(w in content_lower for w in ["will do", "promised to", "follow up", "send over", "by tomorrow", "deadline"]):
-            suggested_type = CaptureType.action
+        if any(w in content_lower for w in ["promised", "will deliver", "committed", "commit to", "by next week", "deadline"]):
+            suggested_type = SubThreadType.commitment
             confidence = 0.90
-            reasoning = "Contains action/promise keywords."
+            reasoning = "Contains commitment or delivery promise."
+        elif any(w in content_lower for w in ["follow up", "check back", "ping", "reach out"]):
+            suggested_type = SubThreadType.follow_up
+            confidence = 0.88
+            reasoning = "Contains follow-up action."
         elif any(w in content_lower for w in ["decided", "agreed that", "decision", "selected"]):
-            suggested_type = CaptureType.decision
+            suggested_type = SubThreadType.decision
             confidence = 0.88
             reasoning = "Contains decision terms."
         elif content.strip().endswith("?") or any(w in content_lower for w in ["wonder if", "ask whether", "check if"]):
-            suggested_type = CaptureType.question
+            suggested_type = SubThreadType.question
             confidence = 0.85
             reasoning = "Question or clarification format."
         else:
-            suggested_type = CaptureType.note
+            suggested_type = SubThreadType.note
             confidence = 0.75
             reasoning = "General observation or meeting context."
 
         suggested_thread_id = None
         for t in threads:
-            if t.title.lower() in content_lower:
+            if t.agenda.lower() in content_lower:
                 suggested_thread_id = t.id
                 break
 

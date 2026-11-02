@@ -1,11 +1,6 @@
 """
 services/commitment_service.py — Business logic for Commitment operations.
-
-Layer responsibility:
-  - Validates thread and person existence.
-  - Enforces owner_type rules ('person' owner requires owner_person_id).
-  - Emits timeline events ('commitment_created', 'commitment_completed').
-  - Touches thread.last_interaction_at on creation and completion.
+Commitments are strictly linked to a person (whom I committed to with deadline) and thread.
 """
 import uuid
 from datetime import datetime, timezone
@@ -16,11 +11,11 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Commitment,
-    CommitmentOwnerType,
     CommitmentStatus,
     TimelineEvent,
     TimelineEventType,
 )
+from app.repositories.club_repository import club_repository
 from app.repositories.commitment_repository import commitment_repository
 from app.repositories.people_repository import people_repository
 from app.repositories.thread_repository import thread_repository
@@ -73,7 +68,8 @@ class CommitmentService:
         db: Session,
         user_id: str,
         thread_id: Optional[str] = None,
-        owner_type: Optional[CommitmentOwnerType] = None,
+        person_id: Optional[str] = None,
+        club_id: Optional[str] = None,
         status: Optional[CommitmentStatus] = None,
         overdue_only: bool = False,
         due_today_only: bool = False,
@@ -84,7 +80,8 @@ class CommitmentService:
             db,
             user_id=user_id,
             thread_id=thread_id,
-            owner_type=owner_type,
+            person_id=person_id,
+            club_id=club_id,
             status=status,
             overdue_only=overdue_only,
             due_today_only=due_today_only,
@@ -95,7 +92,8 @@ class CommitmentService:
             db,
             user_id=user_id,
             thread_id=thread_id,
-            owner_type=owner_type,
+            person_id=person_id,
+            club_id=club_id,
             status=status,
             overdue_only=overdue_only,
             due_today_only=due_today_only,
@@ -118,40 +116,42 @@ class CommitmentService:
                 detail=f"Thread '{data.thread_id}' not found.",
             )
 
-        # Validate owner if type is person
-        if data.owner_type == CommitmentOwnerType.person:
-            if not data.owner_person_id:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="owner_person_id is required when owner_type is 'person'.",
-                )
-            person = people_repository.get_by_id(db, data.owner_person_id, user_id)
-            if not person:
+        # Validate linked person
+        person = people_repository.get_by_id(db, data.person_id, user_id)
+        if not person:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Person '{data.person_id}' not found.",
+            )
+
+        # Validate club if provided
+        if data.club_id:
+            club = club_repository.get_by_id(db, data.club_id, user_id)
+            if not club:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Person '{data.owner_person_id}' not found.",
+                    detail=f"Club '{data.club_id}' not found.",
                 )
 
-        due_date = data.due_date
-        if due_date and due_date.tzinfo is not None:
-            due_date = due_date.astimezone(timezone.utc).replace(tzinfo=None)
+        deadline = data.deadline
+        if deadline and deadline.tzinfo is not None:
+            deadline = deadline.astimezone(timezone.utc).replace(tzinfo=None)
 
         commitment = Commitment(
             id=str(uuid.uuid4()),
             user_id=user_id,
             thread_id=data.thread_id,
-            capture_id=data.capture_id,
+            person_id=data.person_id,
+            club_id=data.club_id,
+            subthread_id=data.subthread_id,
             description=data.description.strip(),
-            owner_type=data.owner_type,
-            owner_person_id=data.owner_person_id,
             status=CommitmentStatus.open,
-            due_date=due_date,
+            deadline=deadline,
             completed_at=None,
             completion_note=None,
         )
         commitment = commitment_repository.create(db, commitment)
 
-        # Update thread activity and emit timeline event
         thread_repository.touch_last_interaction(db, thread)
         self._emit_timeline_event(
             db,
@@ -161,8 +161,9 @@ class CommitmentService:
             reference_id=commitment.id,
             metadata={
                 "description": commitment.description,
-                "owner_type": commitment.owner_type.value,
-                "due_date": commitment.due_date.isoformat() if commitment.due_date else None,
+                "person_id": person.id,
+                "person_name": person.full_name,
+                "deadline": commitment.deadline.isoformat() if commitment.deadline else None,
             },
         )
         return commitment
@@ -178,25 +179,17 @@ class CommitmentService:
         if "description" in updates and updates["description"]:
             updates["description"] = updates["description"].strip()
 
-        if "owner_type" in updates and updates["owner_type"] == CommitmentOwnerType.person:
-            owner_pid = updates.get("owner_person_id", commitment.owner_person_id)
-            if not owner_pid:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="owner_person_id is required when owner_type is 'person'.",
-                )
-
-        if "owner_person_id" in updates and updates["owner_person_id"]:
-            person = people_repository.get_by_id(db, updates["owner_person_id"], user_id)
+        if "person_id" in updates and updates["person_id"]:
+            person = people_repository.get_by_id(db, updates["person_id"], user_id)
             if not person:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Person '{updates['owner_person_id']}' not found.",
+                    detail=f"Person '{updates['person_id']}' not found.",
                 )
 
-        if "due_date" in updates and updates["due_date"]:
-            if updates["due_date"].tzinfo is not None:
-                updates["due_date"] = updates["due_date"].astimezone(timezone.utc).replace(tzinfo=None)
+        if "deadline" in updates and updates["deadline"]:
+            if updates["deadline"].tzinfo is not None:
+                updates["deadline"] = updates["deadline"].astimezone(timezone.utc).replace(tzinfo=None)
 
         return commitment_repository.update(db, commitment, updates)
 
@@ -248,4 +241,3 @@ class CommitmentService:
 
 
 commitment_service = CommitmentService()
-

@@ -1,11 +1,9 @@
 """
 repositories/search_repository.py — Multi-entity search across Threadwise models.
-
-Per docs/06_data_model.md Search Index Design:
-Indexed Entities and fields:
-- Thread: title, description
+Indexed Entities:
+- Thread: agenda, description
 - Person: full_name, organisation, role, email
-- Capture: content
+- SubThread (Capture): content
 - Commitment: description, completion_note
 """
 from typing import Optional
@@ -13,7 +11,7 @@ from typing import Optional
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.models import Capture, Commitment, Person, Thread
+from app.models import Commitment, Person, SubThread, Thread
 from app.schemas import SearchResultItem
 
 
@@ -30,14 +28,14 @@ class SearchRepository:
         pattern = f"%{query_text}%"
         results: list[SearchResultItem] = []
 
-        # 1. Threads
+        # 1. Threads (searches agenda & description)
         if entity_filter in (None, "", "thread"):
             threads = (
                 db.query(Thread)
                 .filter(
                     Thread.user_id == user_id,
                     or_(
-                        Thread.title.ilike(pattern),
+                        Thread.agenda.ilike(pattern),
                         Thread.description.ilike(pattern),
                     ),
                 )
@@ -49,9 +47,9 @@ class SearchRepository:
                     SearchResultItem(
                         entity_type="thread",
                         entity_id=t.id,
-                        title=t.title,
+                        title=t.agenda,
                         snippet=t.description or "No description",
-                        score=1.0 if query_text.lower() in t.title.lower() else 0.8,
+                        score=1.0 if query_text.lower() in t.agenda.lower() else 0.8,
                     )
                 )
 
@@ -84,13 +82,13 @@ class SearchRepository:
                     )
                 )
 
-        # 3. Captures
-        if entity_filter in (None, "", "capture"):
+        # 3. SubThreads / Captures
+        if entity_filter in (None, "", "capture", "subthread"):
             captures = (
-                db.query(Capture)
+                db.query(SubThread)
                 .filter(
-                    Capture.user_id == user_id,
-                    Capture.content.ilike(pattern),
+                    SubThread.user_id == user_id,
+                    SubThread.content.ilike(pattern),
                 )
                 .limit(limit)
                 .all()
@@ -132,10 +130,8 @@ class SearchRepository:
                     )
                 )
 
-        # Sort results by score desc
         results.sort(key=lambda r: r.score, reverse=True)
         return results[:limit]
 
 
 search_repository = SearchRepository()
-
