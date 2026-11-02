@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+  import { useEffect, useState } from 'react'
 import { endOfDayIso, toDate } from '@/lib/date'
 import { useCommitmentStore, usePeopleStore, useThreadStore, useUiStore } from '@/store'
 import { Button } from '@/components/ui/Button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -25,9 +26,14 @@ export function CommitmentDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined} className="sm:overflow-visible">
-        <DialogHeader>
+      <DialogContent className="sm:overflow-visible">
+        <DialogHeader className="mb-5">
           <DialogTitle>{commitment ? 'Edit commitment' : 'New commitment'}</DialogTitle>
+          <DialogDescription>
+            {commitment
+              ? 'Keep the details current so the next step stays clear.'
+              : 'Capture a clear next step and give it a home.'}
+          </DialogDescription>
         </DialogHeader>
         {open ? (
           <CommitmentForm
@@ -71,8 +77,7 @@ function CommitmentForm({
   }, [hasProvidedPeople, peopleStatus, fetchPeople])
 
   const [description, setDescription] = useState(commitment?.description ?? '')
-  const [ownerType, setOwnerType] = useState(commitment?.ownerType ?? 'me')
-  const [ownerPersonId, setOwnerPersonId] = useState(commitment?.ownerPersonId ?? '')
+  const [personId, setPersonId] = useState(commitment?.ownerPersonId ?? '')
   const [dueDate, setDueDate] = useState(() => toDate(commitment?.dueDate))
   const [targetThreadId, setTargetThreadId] = useState(commitment?.threadId ?? threadId ?? '')
   const [error, setError] = useState(null)
@@ -88,10 +93,7 @@ function CommitmentForm({
       })),
   ]
 
-  const ownerOptions = [
-    { value: 'me', label: 'Me' },
-    { value: 'person', label: 'Someone else' },
-  ]
+  // Commitments are always tied to a person (no Me/Someone-else toggle).
 
   const peopleOptions = [
     { value: '', label: 'Select a person…' },
@@ -101,10 +103,10 @@ function CommitmentForm({
     })),
   ]
 
-  // Keep an already-assigned owner selectable even if it isn't in the list.
-  if (ownerPersonId && !peopleOptions.some((option) => option.value === ownerPersonId)) {
+  // Keep an already-assigned person selectable even if it isn't in the list.
+  if (personId && !peopleOptions.some((option) => option.value === personId)) {
     peopleOptions.unshift({
-      value: ownerPersonId,
+      value: personId,
       label: commitment?.ownerPerson?.fullName ?? 'Selected person',
     })
   }
@@ -119,12 +121,15 @@ function CommitmentForm({
       setError('Pick the thread this commitment belongs to.')
       return
     }
+    if (!personId) {
+      setError('Select the person this commitment is with.')
+      return
+    }
 
     const payload = {
       description: description.trim(),
       threadId: targetThreadId,
-      ownerType,
-      ownerPersonId: ownerType === 'person' ? ownerPersonId || null : null,
+      personId,
       dueDate: dueDate ? endOfDayIso(dueDate) : null,
     }
 
@@ -143,7 +148,7 @@ function CommitmentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Field label="Commitment description" htmlFor="commitment-description" error={error}>
         <Input
           id="commitment-description"
@@ -156,7 +161,7 @@ function CommitmentForm({
         />
       </Field>
 
-      <Field label="Thread">
+      <Field label="Thread" hint="Link this promise to the conversation where it started.">
         <SelectMenu
           value={targetThreadId}
           onChange={setTargetThreadId}
@@ -166,42 +171,30 @@ function CommitmentForm({
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Owner">
-          <SelectMenu
-            value={ownerType}
-            onChange={setOwnerType}
-            options={ownerOptions}
-          />
-        </Field>
+      <Field
+        label="Person"
+        hint={
+          !loadingPeople && directoryPeople.length === 0
+            ? 'No people in your directory yet — add someone from the People page.'
+            : 'Whom is this commitment with? Every commitment is tied to a person.'
+        }
+      >
+        <SelectMenu
+          value={personId}
+          onChange={setPersonId}
+          options={peopleOptions}
+          placeholder={loadingPeople ? 'Loading people...' : 'Select a person...'}
+        />
+      </Field>
 
-        <Field label="Due date" htmlFor="commitment-due">
-          <DatePicker
-            id="commitment-due"
-            value={dueDate}
-            onChange={setDueDate}
-            aria-label="Due date"
-          />
-        </Field>
-      </div>
-
-      {ownerType === 'person' ? (
-        <Field
-          label="Who owns it?"
-          hint={
-            !loadingPeople && directoryPeople.length === 0
-              ? 'No people in your directory yet — add someone from the People page.'
-              : undefined
-          }
-        >
-          <SelectMenu
-            value={ownerPersonId}
-            onChange={setOwnerPersonId}
-            options={peopleOptions}
-            placeholder={loadingPeople ? 'Loading people…' : 'Select a person…'}
-          />
-        </Field>
-      ) : null}
+      <Field label="Due date" htmlFor="commitment-due">
+        <DatePicker
+          id="commitment-due"
+          value={dueDate}
+          onChange={setDueDate}
+          aria-label="Due date"
+        />
+      </Field>
 
       <DialogFooter>
         <Button variant="ghost" onClick={() => onOpenChange(false)}>

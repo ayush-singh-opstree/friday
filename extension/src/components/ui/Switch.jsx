@@ -14,7 +14,7 @@ export function Switch({ className, id, checked, onCheckedChange, disabled, ...p
       disabled={disabled}
       className={cn(
         'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-transparent transition-colors duration-200',
-        'data-[state=checked]:bg-primary data-[state=unchecked]:bg-line',
+        'data-[state=checked]:bg-primary data-[state=unchecked]:bg-line/80',
         'disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
@@ -22,7 +22,7 @@ export function Switch({ className, id, checked, onCheckedChange, disabled, ...p
     >
       <SwitchPrimitive.Thumb
         className={cn(
-          'pointer-events-none block size-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+          'pointer-events-none block size-5 rounded-full bg-white shadow-md transition-transform duration-200',
           'data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0.5',
         )}
       />

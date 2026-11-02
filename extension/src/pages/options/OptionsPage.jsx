@@ -27,14 +27,14 @@ export function OptionsPage() {
   const [section, setSection] = useState('account')
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-5 px-5 py-7">
       {/* Header */}
       <header className="flex items-center gap-3">
         <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-ink-inverse shadow-md shadow-primary/25">
           <Logo size={24} className="[&_rect:first-child]:hidden" />
         </div>
         <div>
-          <h1 className="text-heading-1 font-bold text-ink">{APP.companionName}</h1>
+          <h1 className="text-heading-1 font-bold tracking-[-0.025em] text-ink">{APP.companionName}</h1>
           <p className="text-small text-ink-muted">{APP.tagline}</p>
         </div>
       </header>
@@ -75,9 +75,9 @@ function AppearanceSection() {
   const { theme, setTheme } = useTheme()
 
   return (
-    <Card className="p-6">
+    <Card className="p-5">
       <SectionHeader label="Visual Appearance" />
-      <p className="text-small text-ink-muted mb-4">
+      <p className="mb-4 text-small text-ink-muted">
         Customize the visual theme across the popup, side panel and options page.
       </p>
 
@@ -127,7 +127,7 @@ function NotificationsSection() {
   const prefs = settings.notificationPreferences
 
   return (
-    <Card className="p-6">
+    <Card className="p-5">
       <SectionHeader label="Notification Reminders" />
       <div className="divide-y divide-line">
         <SwitchRow
@@ -176,7 +176,7 @@ function NotificationsSection() {
 function AccountSection() {
   const { user, signOut } = useAuthState()
   return (
-    <Card className="p-6">
+    <Card className="p-5">
       <SectionHeader label="Account Overview" />
       <p className="text-small text-ink-muted leading-relaxed">
         Signed in as <strong className="text-ink">{user?.fullName ?? '—'}</strong> ({user?.email ?? '—'}). Full account deletion, profile editing, and JSON data exports can be accessed anytime from the main Friday web application.
@@ -198,7 +198,7 @@ function AccountSection() {
 
 function AboutSection() {
   return (
-    <Card className="p-6">
+    <Card className="p-5">
       <SectionHeader label="About Friday Companion" />
       <div className="flex flex-col divide-y divide-line text-small">
         <div className="flex justify-between items-center py-3">

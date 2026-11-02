@@ -16,6 +16,8 @@ from sqlalchemy.orm import Session
 from app.models import (
     CaptureSource,
     Club,
+    Commitment,
+    SubThread,
     TimelineEvent,
     TimelineEventType,
 )
@@ -72,8 +74,14 @@ class ClubService:
             event_metadata={"club_name": club.name, "started_at": now.isoformat()},
             occurred_at=now,
         )
-        db.add(event)
-        db.commit()
+        try:
+            try:
+                db.add(event)
+                db.commit()
+            except Exception:
+                db.rollback()
+        except Exception:
+            db.rollback()
 
         return club
 
@@ -107,8 +115,11 @@ class ClubService:
                 },
                 occurred_at=end_time,
             )
-            db.add(event)
-            db.commit()
+            try:
+                db.add(event)
+                db.commit()
+            except Exception:
+                db.rollback()
 
         return club
 
@@ -124,6 +135,47 @@ class ClubService:
         self, db: Session, thread_id: str, user_id: str
     ) -> Optional[Club]:
         return club_repository.get_active_club_for_thread(db, thread_id, user_id)
+
+    def discard_club(self, db: Session, club_id: str, user_id: str) -> None:
+        club = club_repository.get_by_id(db, club_id, user_id)
+        if not club:
+            return
+
+        # 1. Delete timeline events associated with this club
+        try:
+            db.query(TimelineEvent).filter(
+                TimelineEvent.user_id == user_id,
+                TimelineEvent.reference_id == club.id,
+            ).delete(synchronize_session=False)
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        # 2. Delete subthreads attached to this club
+        try:
+            db.query(SubThread).filter(
+                SubThread.club_id == club.id,
+                SubThread.user_id == user_id,
+            ).delete(synchronize_session=False)
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        # 3. Delete commitments attached to this club
+        try:
+            db.query(Commitment).filter(
+                Commitment.club_id == club.id,
+                Commitment.user_id == user_id,
+            ).delete(synchronize_session=False)
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        # 4. Delete the club itself
+        try:
+            club_repository.delete(db, club)
+        except Exception:
+            db.rollback()
 
 
 club_service = ClubService()

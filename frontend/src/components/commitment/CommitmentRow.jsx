@@ -1,4 +1,5 @@
-import { Check } from '@/components/icons'
+import { ChatCircleDots, Check, Clock, Users } from '@/components/icons'
+import { UrgencyDot } from '@/components/ui/Badge'
 import { Chip } from '@/components/ui/Chip'
 import { commitmentStatusMeta, humaniseDueDate } from '@/lib/date'
 import { cn } from '@/lib/utils'
@@ -26,11 +27,19 @@ export function CommitmentRow({
     commitment.ownerType === 'person' ? (commitment.ownerPerson?.fullName ?? 'Them') : 'Mine'
   const status = commitmentStatusMeta(commitment.dueDate, commitment.status)
   const due = humaniseDueDate(commitment.dueDate, commitment.status)
+  const urgencyBorder = {
+    overdue: 'border-l-danger bg-danger/[0.025]',
+    soon: 'border-l-warning bg-warning/[0.02]',
+    completed: 'border-l-success/60',
+    open: 'border-l-transparent',
+  }[status.key]
 
   return (
     <div
       className={cn(
-        'flex items-start gap-3 px-3.5 py-3 transition-colors hover:bg-overlay/60',
+        'group/row flex items-start gap-3 border-l-2 px-4 py-3.5 transition-colors hover:bg-overlay/70 sm:px-4.5',
+        urgencyBorder,
+        'not-last:border-b not-last:border-line/70',
         className,
       )}
     >
@@ -50,7 +59,7 @@ export function CommitmentRow({
           'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-150',
           completed
             ? 'border-success bg-success text-ink-inverse'
-            : 'border-ink-subtle/60 bg-card text-transparent hover:border-success hover:bg-success/15 hover:text-success',
+            : 'border-ink-subtle/50 bg-card text-transparent hover:border-success hover:bg-success/15 hover:text-success group-hover/row:border-ink-muted',
           'disabled:cursor-not-allowed disabled:opacity-50',
         )}
       >
@@ -59,29 +68,38 @@ export function CommitmentRow({
 
       {/* 2. Content */}
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
           <p
             className={cn(
-              'min-w-0 flex-1 text-body-medium text-ink',
+              'min-w-0 flex-1 text-body-medium leading-snug text-ink',
               completed && 'text-ink-muted line-through',
             )}
           >
             {commitment.description}
           </p>
-          <Chip tone={status.tone} className="shrink-0">
+          <Chip
+            tone={status.tone}
+            icon={<UrgencyDot dueDate={commitment.dueDate} status={commitment.status} />}
+            className="shrink-0"
+          >
             {status.label}
           </Chip>
         </div>
 
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-tiny text-ink-muted">
-          <span className={cn(status.key === 'overdue' && 'font-semibold text-danger')}>{due}</span>
-          <span aria-hidden="true">·</span>
-          <span>{owner}</span>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-tiny text-ink-muted">
+          <span className={cn('inline-flex items-center gap-1.5', status.key === 'overdue' && 'font-semibold text-danger')}>
+            <Clock size={12} weight="bold" />
+            {due}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Users size={12} />
+            {owner}
+          </span>
           {showThread && commitment.threadTitle ? (
-            <>
-              <span aria-hidden="true">·</span>
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <ChatCircleDots size={12} />
               <span className="truncate">{commitment.threadTitle}</span>
-            </>
+            </span>
           ) : null}
         </div>
       </div>

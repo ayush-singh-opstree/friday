@@ -68,6 +68,17 @@ async function refreshBadge() {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const { type, payload } = message ?? {}
 
+  if (type === MESSAGE_TYPES.OPEN_SIDE_PANEL) {
+    const windowId = sender.tab?.windowId
+    if (windowId && chrome.sidePanel?.open) {
+      chrome.sidePanel.open({ windowId }).catch(() => {})
+    } else if (sender.tab?.id && chrome.sidePanel?.open) {
+      chrome.sidePanel.open({ tabId: sender.tab.id }).catch(() => {})
+    }
+    sendResponse({ ok: true })
+    return false
+  }
+
   // Fingerprint request from a content script: is this person in the directory?
   if (type === MESSAGE_TYPES.PAGE_CONTEXT) {
     respondToPageContext(payload).then(sendResponse)

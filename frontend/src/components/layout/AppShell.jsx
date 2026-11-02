@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
+  ArrowLeft,
   CaretDoubleLeft,
   CaretDoubleRight,
   CheckSquare,
@@ -96,6 +97,7 @@ export function AppShell({ children }) {
   const reduceMotion = useReducedMotion()
 
   const section = location.pathname.split('/')[1] ?? 'today'
+  const isThreadDetail = section === 'threads' && Boolean(location.pathname.split('/')[2])
   const collapsed =
     sidebarPref === 'collapsed' ? true : sidebarPref === 'expanded' ? false : !isDesktop
   const toggleSidebar = () => updateSettings({ sidebar: collapsed ? 'expanded' : 'collapsed' })
@@ -221,6 +223,24 @@ export function AppShell({ children }) {
             <Link to="/today" className="md:hidden">
               <Wordmark size={24} className="[&_span]:hidden" />
             </Link>
+            {section === 'commitments' ? (
+              <h1 className="ml-1 min-w-0 truncate text-[20px] font-bold leading-none tracking-[-0.045em] text-ink sm:text-[24px]">
+                Commitments
+              </h1>
+            ) : null}
+            {isThreadDetail ? (
+              <button
+                type="button"
+                onClick={() => navigate('/threads')}
+                aria-label="Back to all threads"
+                className="group ml-1 inline-flex shrink-0 items-center gap-2 rounded-full border border-line/80 bg-card p-1 text-tiny font-semibold text-ink-muted shadow-sm transition-all hover:border-primary/40 hover:text-primary active:scale-[0.97] cursor-pointer sm:pr-3.5"
+              >
+                <span className="flex size-7 items-center justify-center rounded-full bg-overlay text-ink-muted transition-colors group-hover:bg-primary group-hover:text-ink-inverse">
+                  <ArrowLeft size={15} weight="bold" />
+                </span>
+                <span className="hidden sm:inline">All threads</span>
+              </button>
+            ) : null}
             <div className="flex flex-1 items-center justify-end gap-1">
               <Tooltip content="Search (Ctrl+F)" side="bottom">
                 <IconButton label="Search" onClick={openSearch}>

@@ -63,10 +63,10 @@ const SHORTCUTS = [
  */
 function Pane({ title, description, action, className, children }) {
   return (
-    <Card className={cn('rounded-2xl border-line/80 p-6 shadow-xs', className)}>
+    <Card className={cn('rounded-2xl border-line/80 p-5 shadow-xs', className)}>
       <SectionHeader label={title} action={action} />
       {description ? (
-        <p className="mb-4 max-w-2xl text-small leading-relaxed text-ink-muted">{description}</p>
+        <p className="mb-3 max-w-2xl text-small leading-relaxed text-ink-muted">{description}</p>
       ) : null}
       {children}
     </Card>
@@ -88,22 +88,9 @@ export function SettingsPage() {
     <PageContainer>
       <PageHeader eyebrow="Settings" title="Preferences" />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)] xl:gap-8">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)] xl:gap-6">
         {/* Navigation rail */}
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
-          <div className="flex items-center gap-3 rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
-            <div className="relative shrink-0">
-              <Avatar name={user?.fullName ?? ''} size="md" className="ring-2 ring-primary/20" />
-              <span className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full bg-emerald-500 ring-2 ring-card" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-body-medium font-semibold text-ink">
-                {user?.fullName ?? 'Signed in'}
-              </p>
-              <p className="truncate text-tiny text-ink-muted">{user?.email ?? ''}</p>
-            </div>
-          </div>
-
+        <aside className="flex flex-col gap-3 lg:sticky lg:top-6 lg:self-start">
           <nav
             className="scrollbar-none flex gap-1 overflow-x-auto rounded-2xl border border-line/80 bg-card p-2 shadow-xs lg:flex-col lg:overflow-visible"
             aria-label="Settings sections"
@@ -139,7 +126,7 @@ export function SettingsPage() {
         </aside>
 
         {/* Content */}
-        <div className="flex min-w-0 flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-4">
           {section === 'profile' ? <ProfileSection user={user} signOut={signOut} /> : null}
           {section === 'notifications' ? <NotificationsSection /> : null}
           {section === 'capture' ? <CaptureSection /> : null}
@@ -165,7 +152,7 @@ function ProfileSection({ user, signOut }) {
   ]
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <Pane title="Profile & Account">
         <div className="flex flex-wrap items-center gap-4 border-b border-line/70 pb-5">
           <Avatar name={user?.fullName ?? ''} size="lg" className="ring-2 ring-primary/20" />
@@ -178,9 +165,9 @@ function ProfileSection({ user, signOut }) {
           <PlanBadge plan={user?.plan ?? 'free'} />
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {details.map(({ label, value }) => (
-            <div key={label} className="rounded-xl border border-line/70 bg-overlay/40 px-3.5 py-3">
+            <div key={label} className="rounded-xl border border-line/70 bg-overlay/40 px-3.5 py-2.5">
               <p className="text-tiny font-medium tracking-[0.06em] text-ink-subtle uppercase">
                 {label}
               </p>
@@ -271,14 +258,14 @@ function NotificationsSection() {
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <Pane
         title="Notification Triggers"
-        description={
-          preferencesStatus === 'loading'
-            ? 'Syncing your preferences...'
-            : 'Saved to your account and applied to in-app alerts, push and digests.'
-        }
+          description={
+            preferencesStatus === 'loading'
+              ? 'Syncing your preferences...'
+              : 'Choose which moments should surface an alert.'
+          }
       >
         <div className="divide-y divide-line/70">
           {NOTIFICATION_ROWS.map((row) => (
@@ -294,7 +281,7 @@ function NotificationsSection() {
         </div>
       </Pane>
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
         <Pane title="Digest Delivery">
           <Field label="Preferred digest time" hint="Sent once a day at this local time.">
             <SelectMenu
@@ -347,7 +334,7 @@ function CaptureSection() {
   const updateSettings = useUiStore((state) => state.updateSettings)
 
   return (
-    <div className="grid gap-5 xl:grid-cols-2">
+    <div className="grid gap-4 xl:grid-cols-2">
       <Pane
         title="Capture Preferences"
         description="Quick Capture preselects this type for rapid notes. Smart detection reads action verbs and dates to suggest commitments."
@@ -399,7 +386,7 @@ function ThreadsSection() {
   const updateSettings = useUiStore((state) => state.updateSettings)
 
   return (
-    <div className="grid gap-5 xl:grid-cols-2">
+    <div className="grid gap-4 xl:grid-cols-2">
       <Pane title="Thread Sorting" description="The default order applied to your Threads list.">
         <Field label="Default sort order" hint="You can still change it per session from the list.">
           <SelectMenu
@@ -523,7 +510,7 @@ function DataSection() {
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <Pane
         title="Data Ownership & Backup"
         description="Everything you capture belongs to you. Export the full workspace as a standard JSON backup at any time."
@@ -585,7 +572,7 @@ function AboutSection() {
   ]
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <Pane title="About Friday" description={APP.tagline}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {buildInfo.map(({ label, value }) => (

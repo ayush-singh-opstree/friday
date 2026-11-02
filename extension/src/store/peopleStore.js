@@ -11,6 +11,7 @@ export const usePeopleStore = create((set, get) => ({
   query: '',
   /** @type {any | null} */
   selectedPerson: null,
+  selectedPersonStatus: 'idle',
   /** @type {any[]} */
   selectedPersonThreads: [],
   /** @type {any[]} */
@@ -45,23 +46,29 @@ export const usePeopleStore = create((set, get) => ({
     if (!personId) {
       set({
         selectedPerson: null,
+        selectedPersonStatus: 'idle',
         selectedPersonThreads: [],
         selectedPersonCommitments: [],
         selectedPersonCaptures: [],
       })
       return null
     }
+    set({ selectedPersonStatus: 'loading', error: null })
     try {
       const data = await peopleApi.detail(personId)
       set({
         selectedPerson: data?.person ?? null,
+        selectedPersonStatus: 'ready',
         selectedPersonThreads: data?.threads ?? [],
         selectedPersonCommitments: data?.commitments ?? [],
         selectedPersonCaptures: data?.captures ?? [],
       })
       return data
     } catch (error) {
-      set({ error: error?.message ?? 'Could not load this person.' })
+      set({
+        selectedPersonStatus: 'idle',
+        error: error?.message ?? 'Could not load this person.',
+      })
       return null
     }
   },

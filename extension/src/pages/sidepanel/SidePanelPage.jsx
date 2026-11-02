@@ -20,6 +20,7 @@ import {
   Field,
   IconButton,
   PersonRowSkeleton,
+  Skeleton,
   ThreadListSkeleton,
   SectionHeader,
   Tabs,
@@ -57,11 +58,11 @@ export function SidePanelPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-surface">
-      <header className="flex items-center justify-between border-b border-line bg-card/95 px-3.5 py-2 backdrop-blur-sm">
+    <div className="flex min-h-dvh w-full flex-col bg-surface overflow-x-hidden">
+      <header className="flex h-12 items-center justify-between border-b border-line/80 bg-card px-4 shadow-sm">
         <div className="flex items-center gap-2">
           <Logo size={22} />
-          <span className="text-small font-bold text-ink tracking-tight">Friday Companion</span>
+          <span className="text-small font-bold tracking-[-0.02em] text-ink">Friday Companion</span>
         </div>
         <div className="flex items-center gap-1.5">
           {activeSession ? (
@@ -133,12 +134,17 @@ function PeoplePanel() {
 
   const directory = usePeopleStore((state) => state.people)
   const selectedPerson = usePeopleStore((state) => state.selectedPerson)
+  const selectedPersonStatus = usePeopleStore((state) => state.selectedPersonStatus)
   const personThreads = usePeopleStore((state) => state.selectedPersonThreads)
   const personCommitments = usePeopleStore((state) => state.selectedPersonCommitments)
   const selectPerson = usePeopleStore((state) => state.selectPerson)
 
   const list = people.length > 0 ? people : directory
   const openCommitments = personCommitments.filter((row) => row.status === 'open')
+
+  if (selectedPersonStatus === 'loading') {
+    return <PersonDetailSkeleton />
+  }
 
   if (selectedPerson) {
     return (
@@ -259,6 +265,39 @@ function PeoplePanel() {
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+function PersonDetailSkeleton() {
+  return (
+    <div className="flex flex-col gap-3" role="status" aria-label="Loading person details">
+      <div className="flex items-center gap-2 px-1">
+        <Skeleton className="h-4 w-24 rounded-md" />
+      </div>
+
+      <Card className="flex items-center gap-3 p-3.5">
+        <Skeleton className="size-10 shrink-0 rounded-full" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <Skeleton className="h-4 w-32 rounded-md" />
+          <Skeleton className="h-3 w-44 max-w-full rounded-md" />
+        </div>
+      </Card>
+
+      <section>
+        <Skeleton className="mb-2 h-3 w-28 rounded-md" />
+        <div className="flex flex-col gap-1.5">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-xl border border-line/60 bg-card p-2.5 shadow-2xs"
+            >
+              <Skeleton className="h-3.5 w-3/4 rounded-md" />
+              <Skeleton className="mt-1.5 h-2.5 w-1/3 rounded-md bg-line/60" />
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
@@ -415,25 +454,25 @@ function CaptureForm({ capture }) {
             className="h-8 w-full rounded-lg border border-line bg-overlay px-2.5 text-tiny text-ink focus:border-primary focus:bg-card focus:outline-none"
             min={new Date().toISOString().split('T')[0]}
           />
-          <div className="flex items-center gap-1 justify-end pt-1">
+          <div className="flex flex-wrap items-center gap-1 justify-end pt-1">
             <button
               type="button"
               onClick={() => capture.setDueDate(new Date().toISOString().split('T')[0])}
-              className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-overlay hover:bg-card text-ink-muted"
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-overlay hover:bg-card text-ink-muted shrink-0"
             >
               Today
             </button>
             <button
               type="button"
               onClick={() => capture.setDueDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])}
-              className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-overlay hover:bg-card text-ink-muted"
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-overlay hover:bg-card text-ink-muted shrink-0"
             >
               Tomorrow
             </button>
             <button
               type="button"
               onClick={() => capture.setDueDate(new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0])}
-              className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-overlay hover:bg-card text-ink-muted"
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-overlay hover:bg-card text-ink-muted shrink-0"
             >
               Next week
             </button>

@@ -1,27 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus } from '@/components/icons'
-import { makePersonDetails } from '@/lib/people'
-import { useThreadStore, useUiStore } from '@/store'
+import { motion, useMotionValue, useReducedMotion, useSpring } from 'motion/react'
+import { useThreadStore } from '@/store'
 import { PageContainer } from '@/components/layout/PageHeader'
 import { ThreadHeader } from '@/components/thread/ThreadHeader'
 import { TimelineTab } from '@/components/thread/TimelineTab'
 import { ThreadCommitmentsTab } from '@/components/thread/ThreadCommitmentsTab'
-import { ThreadPeopleTab } from '@/components/thread/ThreadPeopleTab'
 import { BriefTab } from '@/components/thread/BriefTab'
 import { Button } from '@/components/ui/Button'
 import { CountBadge } from '@/components/ui/Badge'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/Feedback'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 
+const THREAD_TABS = [
+  { value: 'timeline', label: 'Timeline' },
+  { value: 'commitments', label: 'Commitments' },
+  { value: 'brief', label: 'Brief' },
+]
+
 /**
  * Thread detail (Feature 2) - full-width primary workspace for a relationship.
- * Four tabs: Timeline (default), Commitments, People and Brief.
+ * Three tabs: Timeline (default), Commitments and Brief. People are managed
+ * from the thread header.
  */
 export function ThreadDetailPage() {
   const { threadId } = useParams()
-  const openQuickCapture = useUiStore((state) => state.openQuickCapture)
-
   const thread = useThreadStore((state) => state.thread)
   const captures = useThreadStore((state) => state.captures)
   const commitments = useThreadStore((state) => state.commitments)
@@ -32,6 +35,7 @@ export function ThreadDetailPage() {
   const error = useThreadStore((state) => state.error)
   const selectThread = useThreadStore((state) => state.selectThread)
   const [tab, setTab] = useState('timeline')
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     selectThread(threadId)
@@ -63,32 +67,47 @@ export function ThreadDetailPage() {
   }
 
   const openCount = commitments.filter((row) => row.status === 'open').length
-  const personDetails = makePersonDetails(commitments)
 
   return (
     <PageContainer>
-      <ThreadHeader thread={thread} />
-
+      <ScrollProgress />
       <Tabs value={tab} onValueChange={setTab}>
-        {/* Navigation & Action Bar */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <TabsList aria-label="Thread sections" className="w-full sm:w-auto">
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="commitments">
-              Commitments
-              <CountBadge value={openCount} />
-            </TabsTrigger>
-            <TabsTrigger value="people">People</TabsTrigger>
-            <TabsTrigger value="brief">Brief</TabsTrigger>
-          </TabsList>
+        <ThreadHeader
+          thread={thread}
+          tabBar={
+            <TabsList aria-label="Thread sections" className="relative w-full bg-overlay sm:w-auto">
+              {THREAD_TABS.map((item) => {
+                const active = tab === item.value
+                return (
+                  <TabsTrigger
+                    key={item.value}
+                    value={item.value}
+                    className="relative data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                  >
+                    {active ? (
+                      <motion.span
+                        layoutId="thread-tab-pill"
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 rounded-sm bg-card shadow-sm"
+                        transition={
+                          reduceMotion
+                            ? { duration: 0 }
+                            : { type: 'spring', stiffness: 420, damping: 34 }
+                        }
+                      />
+                    ) : null}
+                    <span className="relative z-10 inline-flex items-center gap-1.5">
+                      {item.label}
+                      {item.value === 'commitments' ? <CountBadge value={openCount} /> : null}
+                    </span>
+                  </TabsTrigger>
+                )
+              })}
+            </TabsList>
+          }
+        />
 
-          <Button size="sm" onClick={() => openQuickCapture(thread.id)} className="shrink-0 gap-1.5 shadow-sm">
-            <Plus size={15} weight="bold" />
-            Add capture
-          </Button>
-        </div>
-
-        <TabsContent value="timeline">
+        <TabsContent value="timeline" className="tw-rise">
           <TimelineTab
             timeline={timeline}
             captures={captures}
@@ -99,7 +118,7 @@ export function ThreadDetailPage() {
           />
         </TabsContent>
 
-        <TabsContent value="commitments">
+        <TabsContent value="commitments" className="tw-rise">
           <ThreadCommitmentsTab
             thread={thread}
             commitments={commitments}
@@ -108,11 +127,7 @@ export function ThreadDetailPage() {
           />
         </TabsContent>
 
-        <TabsContent value="people">
-          <ThreadPeopleTab people={thread.people ?? []} personDetails={personDetails} />
-        </TabsContent>
-
-        <TabsContent value="brief">
+        <TabsContent value="brief" className="tw-rise">
           <BriefTab
             thread={thread}
             summaries={summaries}
@@ -122,5 +137,62 @@ export function ThreadDetailPage() {
         </TabsContent>
       </Tabs>
     </PageContainer>
+  )
+}
+
+/**
+ * Thin scroll-progress line pinned to the top of the thread workspace.
+ * Finds the nearest scroll container (the app's ScrollArea viewport) and fills
+ * a spring-smoothed bar as the user scrolls. Snaps under reduced motion.
+ */
+function ScrollProgress() {
+  const anchorRef = useRef(null)
+  const reduceMotion = useReducedMotion()
+  const raw = useMotionValue(0)
+  const spring = useSpring(raw, { stiffness: 260, damping: 40, restDelta: 0.001 })
+  const scaleX = reduceMotion ? raw : spring
+
+  useEffect(() => {
+    const anchor = anchorRef.current
+    if (!anchor) return undefined
+
+    let node = anchor.parentElement
+    while (node && node !== document.body) {
+      const { overflowY } = getComputedStyle(node)
+      if (
+        overflowY === 'auto' ||
+        overflowY === 'scroll' ||
+        overflowY === 'overlay' ||
+        node.hasAttribute('data-radix-scroll-area-viewport')
+      ) {
+        break
+      }
+      node = node.parentElement
+    }
+    const scroller = node && node !== document.body ? node : null
+    if (!scroller) return undefined
+
+    const onScroll = () => {
+      const max = scroller.scrollHeight - scroller.clientHeight
+      raw.set(max > 0 ? Math.min(1, Math.max(0, scroller.scrollTop / max)) : 0)
+    }
+    onScroll()
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [raw])
+
+  return (
+    <>
+      <span ref={anchorRef} aria-hidden="true" className="absolute size-0" />
+      <div
+        aria-hidden="true"
+        className="sticky top-0 z-30 h-0.5 w-full overflow-hidden bg-transparent"
+      >
+        <motion.div
+          className="h-full origin-left bg-gradient-to-r from-primary to-accent"
+          style={{ scaleX }}
+        />
+      </div>
+    </>
   )
 }

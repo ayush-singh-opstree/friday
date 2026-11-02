@@ -38,6 +38,18 @@ export const clubsApi = {
   },
 
   /**
+   * Discard a meeting capture session (deletes club and its timeline events).
+   * @param {string} clubId
+   */
+  discard: async (clubId) => {
+    if (!clubId) return null
+    if (env.useMockApi) {
+      return { ok: true, club_id: clubId }
+    }
+    return http.post(ENDPOINTS.clubs.discard(clubId))
+  },
+
+  /**
    * Get club session detail with grouped subthreads.
    * @param {string} clubId
    */

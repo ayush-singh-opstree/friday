@@ -3,14 +3,15 @@ import { ArrowRight, Trash, Tray } from '@/components/icons'
 import { relativeTime } from '@/lib/date'
 import { useCaptureStore, useThreadStore, useUiStore } from '@/store'
 import { Button } from '@/components/ui/Button'
-import { Chip } from '@/components/ui/Chip'
+import { CaptureTypeChip } from '@/components/ui/Chip'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog'
-import { EmptyState } from '@/components/ui/Feedback'
+import { StaggerGroup, StaggerItem } from '@/components/ui'
+import { EmptyState, Skeleton } from '@/components/ui/Feedback'
 
 export function InboxSheet({ open, onOpenChange }) {
   const inbox = useCaptureStore((state) => state.inbox)
@@ -65,14 +66,23 @@ export function InboxSheet({ open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-6" aria-describedby={undefined}>
-        <DialogHeader className="mb-4">
+      <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-5" aria-describedby={undefined}>
+        <DialogHeader className="mb-3">
           <div className="flex items-center gap-2.5">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/15">
               <Tray size={18} weight="duotone" />
             </span>
-            <div>
-              <DialogTitle className="text-heading-3 font-semibold text-ink">Inbox</DialogTitle>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <DialogTitle className="text-heading-3 font-semibold tracking-tight text-ink">
+                  Inbox
+                </DialogTitle>
+                {inbox.length > 0 ? (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    {inbox.length}
+                  </span>
+                ) : null}
+              </div>
               <p className="text-tiny text-ink-muted">
                 {inbox.length === 0
                   ? 'No unfiled captures'
@@ -83,7 +93,22 @@ export function InboxSheet({ open, onOpenChange }) {
         </DialogHeader>
 
         {status === 'loading' && inbox.length === 0 ? (
-          <div className="py-12 text-center text-small text-ink-muted">Loading inbox...</div>
+          <div className="flex flex-col gap-2" role="status" aria-live="polite" aria-busy="true">
+            <span className="sr-only">Loading inbox</span>
+            {[0, 1, 2, 3].map((row) => (
+              <div key={row} className="rounded-lg border border-line/70 bg-card p-2.5">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                  <Skeleton className="h-3 w-10" />
+                </div>
+                <Skeleton className="mt-2 h-3 w-4/5" />
+                <div className="mt-2 flex items-center gap-2">
+                  <Skeleton className="h-7 flex-1 rounded-lg" />
+                  <Skeleton className="h-7 w-14 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : inbox.length === 0 ? (
           <div className="py-8">
             <EmptyState
@@ -93,27 +118,17 @@ export function InboxSheet({ open, onOpenChange }) {
             />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 scroll-slim">
-            {inbox.map((capture) => {
-              const typeTone =
-                capture.type === 'commitment'
-                  ? 'commitment'
-                  : capture.type === 'decision'
-                    ? 'decision'
-                    : capture.type === 'question'
-                      ? 'question'
-                      : 'neutral'
-
-              return (
-                <div
+          <div className="flex-1 overflow-y-auto pr-1 scroll-slim">
+            <StaggerGroup as="ul" className="flex flex-col gap-2">
+              {inbox.map((capture) => (
+                <StaggerItem
+                  as="li"
                   key={capture.id}
-                  className="group relative flex flex-col gap-2.5 rounded-xl border border-line/70 bg-surface/60 p-3.5 transition-all duration-150 hover:border-line hover:bg-card"
+                  className="group relative flex flex-col gap-2 rounded-lg border border-line/70 bg-card p-2.5 transition-colors hover:border-line"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Chip tone={typeTone} className="capitalize">
-                        {capture.type}
-                      </Chip>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <CaptureTypeChip type={capture.type} />
                       <span className="text-tiny text-ink-subtle">
                         {relativeTime(capture.capturedAt || capture.createdAt)}
                       </span>
@@ -122,7 +137,7 @@ export function InboxSheet({ open, onOpenChange }) {
                     <button
                       type="button"
                       onClick={() => handleDelete(capture.id)}
-                      className="text-ink-subtle hover:text-danger p-1 rounded-md transition-colors"
+                      className="rounded-md p-1 text-ink-subtle opacity-0 transition-all hover:bg-danger/10 hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
                       title="Delete capture"
                       aria-label="Delete capture"
                     >
@@ -130,11 +145,11 @@ export function InboxSheet({ open, onOpenChange }) {
                     </button>
                   </div>
 
-                  <p className="text-small text-ink whitespace-pre-wrap leading-relaxed">
+                  <p className="text-small leading-relaxed text-ink whitespace-pre-wrap">
                     {capture.content}
                   </p>
 
-                  <div className="mt-1 flex items-center gap-2 pt-2 border-t border-line/40">
+                  <div className="flex items-center gap-2 border-t border-line/40 pt-2">
                     <select
                       value={selectedThreads[capture.id] || ''}
                       onChange={(e) =>
@@ -164,9 +179,9 @@ export function InboxSheet({ open, onOpenChange }) {
                       <ArrowRight size={12} weight="bold" />
                     </Button>
                   </div>
-                </div>
-              )
-            })}
+                </StaggerItem>
+              ))}
+            </StaggerGroup>
           </div>
         )}
       </DialogContent>

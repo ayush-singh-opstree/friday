@@ -174,7 +174,7 @@ class CaptureService:
                 db,
                 thread_id=thread.id,
                 user_id=user_id,
-                event_type=TimelineEventType.subthread_added,
+                event_type=TimelineEventType.capture_added,
                 reference_id=subthread.id,
                 metadata={
                     "type": subthread.type.value,

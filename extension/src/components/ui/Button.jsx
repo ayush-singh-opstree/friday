@@ -9,11 +9,11 @@ import { Spinner } from './Spinner'
  */
 const VARIANTS = {
   primary:
-    'bg-primary text-ink-inverse hover:bg-primary-dark shadow-sm hover:shadow active:scale-[0.97]',
-  secondary: 'bg-primary-light text-primary hover:brightness-[0.96] active:scale-[0.97]',
+    'bg-primary text-ink-inverse shadow-sm hover:bg-primary-dark hover:shadow-md active:scale-[0.97]',
+  secondary: 'bg-primary-light text-primary hover:bg-primary/12 active:scale-[0.97]',
   ghost: 'bg-transparent text-primary hover:bg-primary-light active:scale-[0.97]',
   outline:
-    'bg-card text-ink border border-line hover:border-primary/50 hover:bg-overlay active:scale-[0.97]',
+    'bg-card text-ink border border-line/80 hover:border-primary/40 hover:bg-overlay active:scale-[0.97]',
   danger:
     'bg-danger text-ink-inverse hover:brightness-95 shadow-sm hover:shadow active:scale-[0.97]',
 }
@@ -35,7 +35,7 @@ export const Button = forwardRef(function Button(
       type="button"
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap',
+        'inline-flex items-center justify-center gap-2 font-semibold whitespace-nowrap tracking-[-0.01em]',
         'transition-all duration-150 ease-out cursor-pointer',
         'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100',
         VARIANTS[variant] ?? VARIANTS.primary,

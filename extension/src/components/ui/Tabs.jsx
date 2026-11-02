@@ -10,7 +10,7 @@ export function TabsList({ className, children, ...props }) {
   return (
     <TabsPrimitive.List
       className={cn(
-        'scrollbar-none flex w-full items-center gap-1 overflow-x-auto rounded-xl bg-overlay p-1 text-small',
+        'scrollbar-none flex w-full items-center gap-1 overflow-x-auto rounded-xl border border-line/70 bg-overlay/80 p-1 text-small shadow-xs',
         className,
       )}
       {...props}
@@ -26,7 +26,7 @@ export function TabsTrigger({ className, children, ...props }) {
       className={cn(
         'inline-flex flex-none items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 font-medium whitespace-nowrap text-ink-muted transition-all duration-150',
         'sm:flex-1 cursor-pointer text-tiny sm:text-small',
-        'hover:text-ink data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-semibold',
+        'hover:bg-card/60 hover:text-ink data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:font-semibold',
         className,
       )}
       {...props}

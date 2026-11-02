@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
+  ArrowCounterClockwise,
   Bell,
   ChatCircleDots,
   CheckSquare,
@@ -13,7 +14,7 @@ import {
 import { NOTIFICATION_TYPE_MAP } from '@/config/constants'
 import { useNotifications } from '@/hooks/useData'
 import { relativeTime } from '@/lib/date'
-import { useUiStore } from '@/store'
+import { useNotificationStore, useUiStore } from '@/store'
 import { IconButton } from '@/components/ui/Button'
 import { EmptyState, Skeleton } from '@/components/ui/Feedback'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
@@ -40,13 +41,13 @@ export function NotificationsBell() {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const pushToast = useUiStore((state) => state.pushToast)
+  const generating = useNotificationStore((state) => state.generating)
   const {
     notifications,
     unreadCount,
     isLoading,
     status,
     error,
-    refresh,
     runTriggers,
     markRead,
     markAllRead,
@@ -94,6 +95,77 @@ export function NotificationsBell() {
     }
   }, [notifications, status, navigate])
 
+  const isLoadingList = isLoading && notifications.length === 0
+
+  const renderRow = (item) => {
+    const meta = NOTIFICATION_TYPE_MAP[item.type]
+    const Icon = ICONS[meta?.icon] ?? Bell
+    return (
+      <li key={item.id} className="group relative flex items-start">
+        {!item.isRead ? (
+          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-gradient-to-b from-primary to-primary/40" />
+        ) : null}
+        <button
+          type="button"
+          onClick={() => openItem(item)}
+          className={cn(
+            'flex min-w-0 flex-1 items-start gap-3 py-3 pl-3.5 pr-1 text-left transition-colors',
+            item.isRead
+              ? 'hover:bg-overlay'
+              : 'bg-gradient-to-r from-primary/[0.07] via-primary/[0.03] to-transparent hover:from-primary/[0.1] hover:via-primary/[0.05]',
+          )}
+        >
+          <span
+            className={cn(
+              'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors',
+              item.isRead
+                ? 'bg-overlay text-ink-subtle ring-line/70'
+                : 'bg-primary/[0.12] text-primary ring-primary/20',
+            )}
+          >
+            <Icon size={15} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex min-w-0 items-start gap-2">
+              <span
+                className={cn(
+                  'min-w-0 flex-1 break-words text-small leading-snug text-ink',
+                  item.isRead ? 'font-medium' : 'font-semibold',
+                )}
+              >
+                {item.title}
+              </span>
+              {!item.isRead ? (
+                <span className="mt-1 flex size-4 shrink-0 items-center justify-center">
+                  <span className="size-2 rounded-full bg-primary ring-2 ring-primary/20" />
+                </span>
+              ) : null}
+            </span>
+            {item.body ? (
+              <span className="mt-0.5 block break-words text-tiny leading-relaxed text-ink-muted">
+                {item.body}
+              </span>
+            ) : null}
+            <span className="mt-1.5 block text-[11px] font-medium text-ink-subtle">
+              {relativeTime(item.scheduledAt)}
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
+          aria-label="Dismiss notification"
+          onClick={(event) => {
+            event.stopPropagation()
+            remove(item.id)
+          }}
+          className="mr-1 mt-2.5 flex size-6 shrink-0 items-center justify-center rounded-full text-ink-subtle opacity-0 transition-all hover:bg-danger/10 hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+        >
+          <X size={13} weight="bold" />
+        </button>
+      </li>
+    )
+  }
+
   return (
     <span className="relative inline-flex">
       <Popover open={open} onOpenChange={setOpen}>
@@ -103,47 +175,49 @@ export function NotificationsBell() {
           </IconButton>
         </PopoverTrigger>
 
-        <PopoverContent align="end" className="w-[360px] max-w-[92vw] overflow-hidden p-0">
-          <div className="flex items-center justify-between gap-2 border-b border-line px-3.5 py-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <p className="shrink-0 text-small font-semibold text-ink">Notifications</p>
-              {unreadCount > 0 ? (
-                <span className="shrink-0 rounded-full bg-primary-light px-2 py-0.5 text-[11px] font-semibold text-primary">
-                  {unreadCount} new
-                </span>
-              ) : null}
+        <PopoverContent align="end" className="w-[368px] max-w-[92vw] overflow-hidden p-0">
+          <div className="flex items-center justify-between gap-2 border-b border-line/80 bg-gradient-to-br from-overlay/70 via-card to-card px-3.5 py-2.5">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/15">
+                <Bell size={15} weight="fill" />
+              </span>
+              <div className="flex min-w-0 items-center gap-2">
+                <p className="truncate text-small font-semibold tracking-tight text-ink">
+                  Notifications
+                </p>
+                {unreadCount > 0 ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    <span className="size-1.5 rounded-full bg-primary" />
+                    {unreadCount} new
+                  </span>
+                ) : null}
+              </div>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                onClick={checkForAlerts}
-                className="rounded-lg px-2 py-1 text-tiny font-medium text-primary transition-colors hover:bg-primary-light"
-              >
-                Check now
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  refresh()
-                  pushToast('Notifications refreshed.', 'success')
-                }}
-                aria-label="Refresh notifications"
-                className="flex size-6 items-center justify-center rounded-lg text-ink-subtle transition-colors hover:bg-overlay hover:text-ink"
-              >
-                <Sparkle size={13} />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={checkForAlerts}
+              disabled={generating}
+              aria-label="Check for new alerts"
+              title="Check for new alerts"
+              className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-line/70 bg-card text-ink-muted transition-all hover:border-primary/30 hover:bg-primary-light hover:text-primary disabled:cursor-wait disabled:opacity-70"
+            >
+              <ArrowCounterClockwise
+                size={15}
+                className={cn((generating || isLoadingList) && 'animate-spin')}
+              />
+            </button>
           </div>
 
-          <div className="scroll-slim max-h-[400px] overflow-y-auto overflow-x-hidden">
-            {isLoading && notifications.length === 0 ? (
-              <div className="flex flex-col gap-3 p-4">
+          <div className="scroll-slim max-h-[420px] overflow-y-auto overflow-x-hidden">
+            {isLoadingList ? (
+              <div className="flex flex-col gap-3 p-3.5">
                 {[0, 1, 2].map((row) => (
                   <div key={row} className="flex items-start gap-3">
-                    <Skeleton className="size-8 shrink-0" />
+                    <Skeleton className="size-8 shrink-0 rounded-lg" />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-3.5 w-3/4" />
                       <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-2.5 w-16" />
                     </div>
                   </div>
                 ))}
@@ -160,68 +234,11 @@ export function NotificationsBell() {
                 />
               </div>
             ) : (
-              <ul className="divide-y divide-line/70">
-                {notifications.map((item) => {
-                  const meta = NOTIFICATION_TYPE_MAP[item.type]
-                  const Icon = ICONS[meta?.icon] ?? Bell
-                  return (
-                    <li key={item.id} className="group relative flex items-start">
-                      <button
-                        type="button"
-                        onClick={() => openItem(item)}
-                        className={cn(
-                          'flex min-w-0 flex-1 items-start gap-3 px-3.5 py-3 text-left transition-colors hover:bg-overlay',
-                          !item.isRead && 'bg-primary/[0.045]',
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg',
-                            item.isRead
-                              ? 'bg-overlay text-ink-subtle'
-                              : 'bg-primary-light text-primary',
-                          )}
-                        >
-                          <Icon size={15} />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex min-w-0 items-start gap-2">
-                            <span className="min-w-0 flex-1 break-words text-small font-semibold text-ink">
-                              {item.title}
-                            </span>
-                            {!item.isRead ? (
-                              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
-                            ) : null}
-                          </span>
-                          {item.body ? (
-                            <span className="mt-0.5 block break-words text-tiny text-ink-muted">
-                              {item.body}
-                            </span>
-                          ) : null}
-                          <span className="mt-1 block text-[11px] text-ink-subtle">
-                            {relativeTime(item.scheduledAt)}
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Dismiss notification"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          remove(item.id)
-                        }}
-                        className="mr-2 mt-3 flex size-6 shrink-0 items-center justify-center rounded-lg text-ink-subtle opacity-0 transition-all hover:bg-overlay hover:text-ink group-hover:opacity-100 focus-visible:opacity-100"
-                      >
-                        <X size={13} />
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+              <ul className="divide-y divide-line/70">{notifications.map(renderRow)}</ul>
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-2 border-t border-line px-3.5 py-2.5">
+          <div className="flex items-center justify-between gap-2 border-t border-line/80 bg-overlay/30 px-3 py-2">
             <button
               type="button"
               disabled={unreadCount === 0}
@@ -236,7 +253,7 @@ export function NotificationsBell() {
                 setOpen(false)
                 navigate('/settings')
               }}
-              className="rounded-lg px-2 py-1 text-tiny font-medium text-primary transition-colors hover:bg-primary-light"
+              className="rounded-lg px-2 py-1 text-tiny font-semibold text-primary transition-colors hover:bg-primary-light"
             >
               Notification settings
             </button>
@@ -245,7 +262,7 @@ export function NotificationsBell() {
       </Popover>
 
       {unreadCount > 0 ? (
-        <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white ring-2 ring-card">
+        <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-card">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       ) : null}

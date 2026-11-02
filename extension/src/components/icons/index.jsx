@@ -45,7 +45,7 @@ import {
   Moon as LucideMoon,
   NotebookText as LucideNotebookText,
   Paintbrush as LucidePaintbrush,
-  PanelLeft as LucidePanelLeft,
+  PanelRight as LucidePanelRight,
   PencilLine as LucidePencilLine,
   Phone as LucidePhone,
   Pin as LucidePin,
@@ -139,7 +139,7 @@ export const PushPin = icon(LucidePin, 'PushPin')
 export const Question = icon(LucideCircleHelp, 'Question')
 export const Robot = icon(LucideBot, 'Robot')
 export const ShieldCheck = icon(LucideShieldCheck, 'ShieldCheck')
-export const SidebarSimple = icon(LucidePanelLeft, 'SidebarSimple')
+export const SidebarSimple = icon(LucidePanelRight, 'SidebarSimple')
 export const SignIn = icon(LucideLogIn, 'SignIn')
 export const SignOut = icon(LucideLogOut, 'SignOut')
 export const Snowflake = icon(LucideSnowflake, 'Snowflake')

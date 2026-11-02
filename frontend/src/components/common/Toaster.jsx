@@ -24,9 +24,10 @@ export function Toaster() {
       toastOptions={{
         duration: 5000,
         classNames: {
-          toast: 'items-start',
-          title: 'break-words',
-          description: 'break-words',
+          toast:
+            'w-[min(420px,calc(100vw-2rem))] min-h-14 items-start gap-3 rounded-xl px-4 py-3.5 shadow-lg',
+          title: 'break-words text-small font-semibold leading-snug',
+          description: 'break-words text-small leading-relaxed',
         },
       }}
     />

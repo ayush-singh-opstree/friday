@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   CalendarBlank,
   Check,
   CheckCircle,
   CheckSquare,
   Clock,
-  CopySimple,
   Lightning,
   MagnifyingGlass,
   Note,
@@ -17,13 +17,16 @@ import {
   Robot,
   Sparkle,
   Users,
+  UsersThree,
   X,
 } from '@/components/icons'
-import { capturesApi } from '@/apis'
+import { capturesApi, clubsApi } from '@/apis'
 import { CaptureTypeChip } from '@/components/ui/Chip'
 import { SyncBadge } from '@/components/ui/SyncBadge'
 import { EmptyState } from '@/components/ui/Feedback'
 import { Button } from '@/components/ui/Button'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/Popover'
+import { CommitmentDialog } from '@/components/commitment/CommitmentDialog'
 import { clockTime, fullDate } from '@/lib/date'
 import { useUiStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -31,9 +34,8 @@ import { cn } from '@/lib/utils'
 const FILTER_OPTIONS = [
   { key: 'all', label: 'All Activity' },
   { key: 'note', label: 'Notes' },
-  { key: 'follow_up', label: 'Follow-ups' },
-  
   { key: 'decision', label: 'Decisions' },
+  { key: 'question', label: 'Questions' },
   { key: 'commitment', label: 'Commitments' },
   { key: 'system', label: 'System' },
 ]
@@ -46,54 +48,30 @@ const COMPOSER_TYPES = [
 ]
 
 /**
- * Alternating accent palettes so back-to-back meeting sessions are visually
- * distinct in the timeline. Sessions cycle through these in chronological order.
+ * Restrained session accents. The session surface stays neutral and premium;
+ * the accent only identifies the session in the spine and header.
  */
 const SESSION_TONES = [
   {
-    rail: 'bg-primary/70',
-    card: 'border-primary/25 bg-primary/5',
-    header: 'border-primary/15 bg-primary/10',
-    badge: 'bg-primary text-ink-inverse',
-    label: 'text-primary/80',
-    connector: 'bg-primary/20',
+    rail: 'bg-primary',
+    label: 'text-primary',
   },
   {
-    rail: 'bg-[#8B5CF6]/70',
-    card: 'border-[#8B5CF6]/25 bg-[#8B5CF6]/5',
-    header: 'border-[#8B5CF6]/15 bg-[#8B5CF6]/10',
-    badge: 'bg-[#8B5CF6] text-white',
-    label: 'text-[#8B5CF6]/80',
-    connector: 'bg-[#8B5CF6]/20',
+    rail: 'bg-violet-500',
+    label: 'text-violet-700',
   },
   {
-    rail: 'bg-[#0D9488]/70',
-    card: 'border-[#0D9488]/25 bg-[#0D9488]/5',
-    header: 'border-[#0D9488]/15 bg-[#0D9488]/10',
-    badge: 'bg-[#0D9488] text-white',
-    label: 'text-[#0D9488]/80',
-    connector: 'bg-[#0D9488]/20',
+    rail: 'bg-teal-600',
+    label: 'text-teal-700',
   },
   {
-    rail: 'bg-[#DB2777]/70',
-    card: 'border-[#DB2777]/25 bg-[#DB2777]/5',
-    header: 'border-[#DB2777]/15 bg-[#DB2777]/10',
-    badge: 'bg-[#DB2777] text-white',
-    label: 'text-[#DB2777]/80',
-    connector: 'bg-[#DB2777]/20',
+    rail: 'bg-rose-500',
+    label: 'text-rose-700',
   },
 ]
 
 /** Stable display order for the capture groups shown inside a session. */
 const SESSION_TYPE_ORDER = ['decision', 'commitment', 'follow_up', 'question', 'note']
-
-const SESSION_TYPE_LABELS = {
-  decision: 'Decisions',
-  commitment: 'Commitments',
-  follow_up: 'Follow-ups',
-  question: 'Questions',
-  note: 'Notes',
-}
 
 /** Bullet colour per capture type inside a session group card. */
 const SESSION_TYPE_DOTS = {
@@ -121,12 +99,13 @@ export function TimelineTab({
   const [newestFirst, setNewestFirst] = useState(true)
   const [filter, setFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [copiedId, setCopiedId] = useState(null)
 
   // Inline Composer State
   const [composerOpen, setComposerOpen] = useState(false)
   const [composerText, setComposerText] = useState('')
   const [composerType, setComposerType] = useState('note')
+  const [composerStep, setComposerStep] = useState('type')
+  const [commitmentOpen, setCommitmentOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const pushToast = useUiStore((state) => state.pushToast)
@@ -198,6 +177,7 @@ export function TimelineTab({
       if (filter === 'note' && (!isCapture || captureType !== 'note')) return false
       if (filter === 'follow_up' && (!isCapture || captureType !== 'follow_up')) return false
       if (filter === 'decision' && (!isCapture || captureType !== 'decision')) return false
+      if (filter === 'question' && (!isCapture || captureType !== 'question')) return false
       if (
         filter === 'commitment' &&
         event.type !== 'commitment_created' &&
@@ -292,11 +272,9 @@ export function TimelineTab({
         .map((event) => event.occurredAt)
         .filter(Boolean)
         .sort()
-      const startMeta = bucket.events.find((event) => event.type === 'club_started')?.metadata
       return {
         ...bucket,
         at: bucket.club?.startedAt ?? times[0] ?? new Date().toISOString(),
-        fallbackName: startMeta?.club_name ?? null,
       }
     })
 
@@ -355,6 +333,7 @@ export function TimelineTab({
       pushToast('Posted to timeline', 'success')
       setComposerText('')
       setComposerOpen(false)
+      setComposerStep('type')
       onRefresh?.()
     } catch {
       pushToast('Failed to post entry', 'danger')
@@ -363,172 +342,118 @@ export function TimelineTab({
     }
   }
 
-  // Copy capture text
-  const handleCopy = async (text, id) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopiedId(id)
-      pushToast('Copied to clipboard', 'success')
-      setTimeout(() => setCopiedId(null), 2000)
-    } catch {
-      pushToast('Failed to copy', 'danger')
-    }
-  }
-
   return (
-    <div className="flex flex-col gap-5">
-      {/* ── Inline Quick Capture Box ─────────────────────── */}
-      <div className="rounded-2xl border border-line/80 bg-card p-4 shadow-xs transition-all focus-within:border-primary/40 focus-within:shadow-sm">
-        {!composerOpen && !composerText ? (
-          <button
-            type="button"
-            onClick={() => setComposerOpen(true)}
-            className="flex w-full items-center justify-between rounded-xl border border-line/60 bg-overlay/50 px-3.5 py-2.5 text-left text-small text-ink-muted transition-colors hover:bg-overlay hover:text-ink cursor-pointer"
-          >
-            <span className="flex items-center gap-2">
-              <Plus size={15} className="text-primary" weight="bold" />
-              Add a note, decision, commitment, or takeaway to this timeline...
-            </span>
-            <kbd className="hidden sm:inline-block rounded border border-line bg-card px-1.5 py-0.5 text-[10px] font-mono text-ink-subtle">
-              Quick post
-            </kbd>
-          </button>
-        ) : (
-          <form onSubmit={handleQuickSubmit} className="flex flex-col gap-3">
-            {/* Type selector chips */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {COMPOSER_TYPES.map((t) => {
-                const Icon = t.icon
-                const active = composerType === t.key
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => setComposerType(t.key)}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-tiny font-medium transition-all cursor-pointer',
-                      active
-                        ? 'bg-primary text-ink-inverse shadow-xs'
-                        : 'border border-line/80 bg-surface text-ink-muted hover:bg-overlay hover:text-ink',
-                    )}
-                  >
-                    <Icon size={12} weight={active ? 'bold' : 'regular'} />
-                    {t.label}
-                  </button>
-                )
-              })}
-            </div>
+    <div className="flex w-full flex-col gap-4 font-sans">
+      {/* ── Add to timeline: circular + opens a quick-add popover ── */}
+      <div className="flex">
+        <Popover
+          open={composerOpen}
+          onOpenChange={(next) => {
+            setComposerOpen(next)
+            if (!next) {
+              setComposerStep('type')
+              setComposerText('')
+            }
+          }}
+        >
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label="Add to timeline"
+              title="Add to timeline"
+              className="group inline-flex size-12 items-center justify-center rounded-full bg-primary text-ink-inverse shadow-lg shadow-primary/30 ring-1 ring-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-xl active:translate-y-0 active:scale-95 cursor-pointer"
+            >
+              <Plus size={22} weight="bold" className="transition-transform group-hover:rotate-90" />
+            </button>
+          </PopoverTrigger>
 
-            {/* Input textarea */}
-            <textarea
-              value={composerText}
-              onChange={(e) => setComposerText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault()
-                  handleQuickSubmit()
-                }
-              }}
-              autoFocus
-              rows={2}
-              placeholder={`Write a ${composerType} for this relationship… (Ctrl+Enter to post)`}
-              className="w-full resize-none rounded-xl border border-line/70 bg-surface/60 p-3 text-small text-ink leading-relaxed placeholder:text-ink-subtle focus:border-primary focus:bg-card focus:outline-none"
-            />
-
-            {/* Composer Footer Actions */}
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] text-ink-subtle">
-                Press <kbd className="font-mono font-medium">Ctrl+Enter</kbd> to post
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setComposerOpen(false)
-                    setComposerText('')
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={!composerText.trim() || submitting}
-                  loading={submitting}
-                  className="gap-1.5 shadow-xs"
-                >
-                  <Plus size={14} weight="bold" />
-                  Post to timeline
-                </Button>
+          <PopoverContent align="start" sideOffset={10} className="w-[340px] max-w-[92vw] overflow-hidden p-0">
+            {composerStep === 'type' ? (
+              <div className="p-2">
+                <p className="px-2.5 pt-1.5 pb-1 text-tiny font-semibold uppercase tracking-[0.1em] text-ink-subtle">
+                  Add to timeline
+                </p>
+                {COMPOSER_TYPES.map((t) => {
+                  const Icon = t.icon
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => {
+                        if (t.key === 'commitment') {
+                          setComposerOpen(false)
+                          setCommitmentOpen(true)
+                          return
+                        }
+                        setComposerType(t.key)
+                        setComposerStep('details')
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-small font-medium text-ink transition-colors hover:bg-overlay cursor-pointer"
+                    >
+                      <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Icon size={15} weight="bold" />
+                      </span>
+                      <span className="flex-1 text-left">{t.label}</span>
+                    </button>
+                  )
+                })}
               </div>
-            </div>
-          </form>
-        )}
+            ) : (
+              <form onSubmit={handleQuickSubmit} className="flex flex-col gap-2.5 p-3">
+                <button
+                  type="button"
+                  onClick={() => setComposerStep('type')}
+                  className="inline-flex w-fit items-center gap-1.5 text-tiny font-semibold text-ink-muted transition-colors hover:text-ink cursor-pointer"
+                >
+                  <ArrowLeft size={13} weight="bold" />
+                  {COMPOSER_TYPES.find((t) => t.key === composerType)?.label ?? 'Back'}
+                </button>
+                <textarea
+                  value={composerText}
+                  onChange={(e) => setComposerText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault()
+                      handleQuickSubmit()
+                    }
+                  }}
+                  autoFocus
+                  rows={3}
+                  placeholder={`Write a ${composerType} for this relationship...`}
+                  className="w-full resize-none rounded-xl border border-line/70 bg-surface/60 p-3 text-[14px] leading-relaxed text-ink placeholder:text-ink-subtle focus:border-primary focus:bg-card focus:outline-none"
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-ink-subtle">
+                    <kbd className="font-mono font-medium">Ctrl+Enter</kbd> to add
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => {
+                      setComposerOpen(false)
+                      setComposerStep('type')
+                      setComposerText('')
+                    }}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" size="sm" disabled={!composerText.trim() || submitting} loading={submitting} className="gap-1.5">
+                      <Plus size={14} weight="bold" />
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
 
-      {/* ── Toolbar: Filters & Search ─────────────────────── */}
-      <div className="flex flex-col gap-3 rounded-xl border border-line/80 bg-card p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-        {/* Category Filters */}
-        <div className="scrollbar-none flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
-          {FILTER_OPTIONS.map((opt) => {
-            const active = filter === opt.key
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setFilter(opt.key)}
-                className={cn(
-                  'shrink-0 rounded-lg px-2.5 py-1 text-tiny font-medium transition-all cursor-pointer',
-                  active
-                    ? 'bg-primary/10 text-primary font-semibold shadow-xs'
-                    : 'text-ink-muted hover:bg-overlay hover:text-ink',
-                )}
-              >
-                {opt.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Search & Sort Actions */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:w-48 sm:flex-initial">
-            <MagnifyingGlass
-              size={13}
-              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-subtle"
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search timeline…"
-              className="h-8 w-full rounded-lg border border-line/80 bg-surface/70 pl-7 pr-7 text-tiny text-ink placeholder:text-ink-subtle focus:border-primary focus:bg-card focus:outline-none"
-            />
-            {searchQuery ? (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute top-1/2 right-2 -translate-y-1/2 text-ink-subtle hover:text-ink"
-              >
-                <X size={12} />
-              </button>
-            ) : null}
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setNewestFirst((val) => !val)}
-            className="h-8 gap-1.5 px-2.5 text-tiny font-medium shrink-0"
-            title={newestFirst ? 'Switch to oldest first' : 'Switch to newest first'}
-          >
-            {newestFirst ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-            <span>{newestFirst ? 'Newest' : 'Oldest'}</span>
-          </Button>
-        </div>
-      </div>
+      <CommitmentDialog
+        open={commitmentOpen}
+        onOpenChange={(next) => {
+          setCommitmentOpen(next)
+          if (!next) onRefresh?.()
+        }}
+        threadId={threadId}
+      />
 
       {/* ── Main Timeline Content ─────────────────────────── */}
       {mergedEvents.length === 0 && clubs.length === 0 ? (
@@ -537,63 +462,128 @@ export function TimelineTab({
           title="No timeline history yet"
           description="Use the capture bar above to add your first note, commitment, or decision for this relationship."
         />
-      ) : timelineItems.length === 0 ? (
-        <EmptyState
-          icon={<MagnifyingGlass size={24} weight="duotone" />}
-          title="No matching events found"
-          description={
-            searchQuery
-              ? `No timeline entries match "${searchQuery}".`
-              : 'No events found in this category.'
-          }
-          action={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setFilter('all')
-                setSearchQuery('')
-              }}
-            >
-              Reset filters
-            </Button>
-          }
-        />
       ) : (
-        <div className="relative pt-2 pb-6">
+        <div className="relative pt-0 pb-8">
           {/* Continuous vertical spine */}
           <div
             className="absolute top-4 bottom-4 left-4.5 sm:left-5.5 w-0.5 bg-line/80"
             aria-hidden="true"
           />
 
-          <div className="flex flex-col gap-7">
+          {/* Floating timeline filters — sticky, aligned with the latest date row on laptop+ */}
+          <div className="flex justify-end sm:sticky sm:top-0 sm:z-30 sm:-mt-14 sm:mb-14 sm:h-0">
+            <div className="flex w-full flex-col gap-2 sm:absolute sm:top-0 sm:right-0 sm:w-[65%] sm:flex-row sm:items-stretch sm:justify-between">
+              {/* Category Filters */}
+              <div className="scrollbar-none flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl border border-line/80 bg-card p-2 shadow-sm">
+                {FILTER_OPTIONS.map((opt) => {
+                  const active = (filter || 'all') === opt.key
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setFilter(opt.key)}
+                      className={cn(
+                        'shrink-0 rounded-lg px-3 py-1 text-small font-medium transition-all cursor-pointer',
+                        active
+                          ? 'bg-primary/10 text-primary font-semibold shadow-xs'
+                          : 'text-ink-muted hover:bg-overlay hover:text-ink',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Search & Sort Actions */}
+              <div className="flex shrink-0 items-center gap-2 rounded-xl border border-line/80 bg-card p-2 shadow-sm">
+                <div className="relative flex-1 sm:w-44 sm:flex-initial">
+                  <MagnifyingGlass
+                    size={14}
+                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-subtle"
+                  />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search timeline..."
+                    className="h-8 w-full rounded-lg border border-line/80 bg-surface/70 pl-8 pr-8 text-small text-ink placeholder:text-ink-subtle focus:border-primary focus:bg-card focus:outline-none"
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-subtle hover:text-ink"
+                    >
+                      <X size={13} />
+                    </button>
+                  ) : null}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewestFirst((val) => !val)}
+                  className="h-8 gap-1.5 px-3 text-small font-medium shrink-0"
+                  title={newestFirst ? 'Switch to oldest first' : 'Switch to newest first'}
+                >
+                  {newestFirst ? <ArrowDown size={13} /> : <ArrowUp size={13} />}
+                  <span>{newestFirst ? 'Newest' : 'Oldest'}</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {timelineItems.length === 0 ? (
+            <div className="pt-8 sm:pt-16">
+              <EmptyState
+                icon={<MagnifyingGlass size={24} weight="duotone" />}
+                title="No matching events found"
+                description={
+                  searchQuery
+                    ? `No timeline entries match "${searchQuery}".`
+                    : 'No events found in this category.'
+                }
+                action={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setFilter('all')
+                      setSearchQuery('')
+                    }}
+                  >
+                    Reset filters
+                  </Button>
+                }
+              />
+            </div>
+          ) : null}
+
+          <div className="flex flex-col gap-8">
             {groups.map((group) => (
               <section key={group.day} className="relative">
                 {/* Left-Aligned Date Header */}
-                <div className="sticky top-2 z-10 my-3.5 flex items-center gap-2.5">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-line/90 bg-card/95 px-2.5 py-1 text-tiny font-semibold text-ink shadow-xs backdrop-blur-md">
-                    <CalendarBlank size={12} className="text-primary" />
+                <div className="sticky top-2 z-20 my-4 flex items-center gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-line bg-card px-3 py-1.5 text-small font-semibold tracking-tight text-ink shadow-sm">
+                    <CalendarBlank size={14} className="text-primary" />
                     {group.day}
                   </span>
                   <div className="h-px flex-1 bg-line/60" aria-hidden="true" />
                 </div>
 
                 {/* Day events list */}
-                <ol className="flex flex-col gap-3.5">
+                <ol className="flex flex-col gap-4">
                   {group.items.map((item) =>
                     item.kind === 'club' ? (
                       <ClubTimelineBlock
                         key={item.id}
                         club={item.club}
-                        clubId={item.clubId}
                         tone={item.tone}
-                        fallbackName={item.fallbackName}
                         events={item.events}
                         captureById={captureById}
                         commitmentById={commitmentById}
-                        copiedId={copiedId}
-                        onCopy={handleCopy}
+                        onRefresh={onRefresh}
                       />
                     ) : (
                       <TimelineRow
@@ -601,11 +591,6 @@ export function TimelineTab({
                         event={item.event}
                         capture={captureById.get(item.event.referenceId)}
                         commitment={commitmentById.get(item.event.referenceId)}
-                        isCopied={
-                          copiedId ===
-                          (captureById.get(item.event.referenceId)?.id ?? item.event.id)
-                        }
-                        onCopy={handleCopy}
                       />
                     ),
                   )}
@@ -622,7 +607,7 @@ export function TimelineTab({
 /**
  * Individual Timeline Item Row with Spine Node.
  */
-function TimelineRow({ event, capture, commitment, isCopied, onCopy, inSession = false }) {
+function TimelineRow({ event, capture, commitment, inSession = false }) {
   const time = clockTime(event.occurredAt)
 
   // 1. Capture / SubThread added (Note, Follow-up, Decision, Question)
@@ -684,44 +669,21 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy, inSession =
             <div className={cn('min-w-0 flex-1 text-[14px] leading-relaxed', contentClass)}>
               {content}
             </div>
-            <button
-              type="button"
-              onClick={() => onCopy(content, capture?.id ?? event.id)}
-              title="Copy note content"
-              className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-subtle opacity-0 transition-all hover:bg-overlay hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100"
-            >
-              {isCopied ? <Check size={12} className="text-emerald-500" /> : <CopySimple size={12} />}
-            </button>
           </div>
         ) : (
-          <div className="w-full rounded-2xl border border-line/80 bg-card p-4 shadow-xs transition-all hover:border-primary/40 hover:shadow-sm">
-            {/* Header Row */}
-            <div className="mb-2.5 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+          <div className="w-full rounded-xl border border-line/75 bg-card px-3.5 py-3 shadow-xs transition-colors hover:border-line">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <CaptureTypeChip type={type} />
                 <span className="flex items-center gap-1 text-tiny text-ink-subtle">
                   <Clock size={11} />
                   {time}
                 </span>
               </div>
-
-              <div className="flex items-center gap-2">
-                {capture ? <SyncBadge status={capture.syncStatus} /> : null}
-                <button
-                  type="button"
-                  onClick={() => onCopy(content, capture?.id ?? event.id)}
-                  title="Copy note content"
-                  className="inline-flex size-6 items-center justify-center rounded-md text-ink-subtle opacity-70 transition-all hover:bg-overlay hover:text-ink hover:opacity-100"
-                >
-                  {isCopied ? <Check size={12} className="text-emerald-500" /> : <CopySimple size={12} />}
-                </button>
-              </div>
+              {capture ? <SyncBadge status={capture.syncStatus} /> : null}
             </div>
 
-            {/* Content Body */}
-            <div className={cn('text-[14px] leading-relaxed', contentClass)}>
-              {content}
-            </div>
+            <p className="whitespace-pre-wrap text-small leading-relaxed text-ink">{content}</p>
           </div>
         )}
       </li>
@@ -732,6 +694,22 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy, inSession =
   if (event.type === 'commitment_created') {
     const desc =
       commitment?.description || event.metadata?.description || 'Commitment created'
+    if (inSession) {
+      return (
+        <li className="group/row flex items-start gap-3 border-t border-line/60 px-4 py-3.5 first:border-t-0">
+          <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border border-line bg-overlay text-accent">
+            <CheckSquare size={14} weight="bold" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-tiny font-semibold uppercase tracking-[0.06em] text-accent">Commitment</span>
+              {inSession ? null : <span className="text-tiny tabular-nums text-ink-subtle">{time}</span>}
+            </div>
+            <p className="mt-1 text-[15px] leading-relaxed tracking-[-0.01em] text-ink">{desc}</p>
+          </div>
+        </li>
+      )
+    }
     return (
       <li className="relative flex items-start gap-3 pl-11 sm:pl-13 group">
         <span className="absolute top-2.5 left-1.5 sm:left-2 flex size-6.5 sm:size-7 items-center justify-center rounded-full border-2 border-card bg-primary/15 text-primary shadow-xs">
@@ -754,6 +732,22 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy, inSession =
   if (event.type === 'commitment_completed') {
     const desc =
       commitment?.description || event.metadata?.description || 'Commitment completed'
+    if (inSession) {
+      return (
+        <li className="group/row flex items-start gap-3 border-t border-line/60 px-4 py-3.5 first:border-t-0">
+          <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border border-success/25 bg-success/10 text-success">
+            <CheckCircle size={14} weight="bold" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-tiny font-semibold uppercase tracking-[0.06em] text-success">Completed commitment</span>
+              {inSession ? null : <span className="text-tiny tabular-nums text-ink-subtle">{time}</span>}
+            </div>
+            <p className="mt-1 text-[15px] leading-relaxed tracking-[-0.01em] text-ink line-through decoration-success/40">{desc}</p>
+          </div>
+        </li>
+      )
+    }
     return (
       <li className="relative flex items-start gap-3 pl-11 sm:pl-13 group">
         <span className="absolute top-2.5 left-1.5 sm:left-2 flex size-6.5 sm:size-7 items-center justify-center rounded-full border-2 border-card bg-emerald-500 text-white shadow-xs">
@@ -789,7 +783,7 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy, inSession =
             <strong className="font-semibold text-ink">{name}</strong>{' '}
             {isAdded ? 'was linked to this thread' : 'was removed from this thread'}
           </span>
-          <span className="shrink-0 text-ink-subtle">{time}</span>
+          {inSession ? null : <span className="shrink-0 text-ink-subtle">{time}</span>}
         </div>
       </li>
     )
@@ -812,7 +806,7 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy, inSession =
       </span>
       <div className="w-full rounded-xl border border-line/60 bg-surface/60 px-3 py-1.5 text-tiny text-ink-muted flex items-center justify-between gap-2">
         <span className={cn('font-medium truncate', meta.color)}>{meta.label}</span>
-        <span className="shrink-0 text-ink-subtle">{time}</span>
+        {inSession ? null : <span className="shrink-0 text-ink-subtle">{time}</span>}
       </div>
     </li>
   )
@@ -824,21 +818,48 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy, inSession =
  */
 function ClubTimelineBlock({
   club,
-  fallbackName,
   events,
   tone,
   captureById,
   commitmentById,
-  copiedId,
-  onCopy,
+  onRefresh,
 }) {
-  // Each session cycles through SESSION_TONES so adjacent sessions differ.
+  const pushToast = useUiStore((state) => state.pushToast)
+  const [acting, setActing] = useState(false)
+  // Each session gets a restrained accent so adjacent sessions remain easy to
+  // distinguish without turning the timeline into a collection of colored cards.
   const palette = tone ?? SESSION_TONES[0]
-  const startEvent = events.find((event) => event.type === 'club_started')
   const endEvent = events.find((event) => event.type === 'club_ended')
-  const startedAt = club?.startedAt ?? startEvent?.occurredAt ?? events[0]?.occurredAt
   const endedAt = club?.endedAt ?? endEvent?.occurredAt ?? null
   const isActive = !endedAt
+
+  const handleDiscard = async () => {
+    if (!club?.id) return
+    setActing(true)
+    try {
+      await clubsApi.discard(club.id)
+      pushToast('Session discarded.', 'success')
+      onRefresh?.()
+    } catch {
+      pushToast('Failed to discard session.', 'danger')
+    } finally {
+      setActing(false)
+    }
+  }
+
+  const handleEnd = async () => {
+    if (!club?.id) return
+    setActing(true)
+    try {
+      await clubsApi.end(club.id)
+      pushToast('Session ended.', 'success')
+      onRefresh?.()
+    } catch {
+      pushToast('Failed to end session.', 'danger')
+    } finally {
+      setActing(false)
+    }
+  }
 
   // Session boundaries are summarised in the header, so the nested list only
   // holds the actual captures / commitments logged during the session.
@@ -846,7 +867,11 @@ function ClubTimelineBlock({
     (event) => event.type !== 'club_started' && event.type !== 'club_ended',
   )
   const captureCount = contentEvents.filter(
-    (event) => event.type === 'subthread_added' || event.type === 'capture_added',
+    (event) =>
+      event.type === 'subthread_added' ||
+      event.type === 'capture_added' ||
+      event.type === 'commitment_created' ||
+      event.type === 'commitment_completed',
   ).length
 
   // Group the session's captures by type so e.g. three notes render together in a
@@ -855,14 +880,26 @@ function ClubTimelineBlock({
     (event) => event.type === 'subthread_added' || event.type === 'capture_added',
   )
   const otherEvents = contentEvents.filter(
-    (event) => event.type !== 'subthread_added' && event.type !== 'capture_added',
+    (event) =>
+      event.type !== 'subthread_added' &&
+      event.type !== 'capture_added' &&
+      event.type !== 'commitment_created' &&
+      event.type !== 'commitment_completed',
   )
 
   const groupedContent = (() => {
     const byType = new Map()
-    for (const event of captureEvents) {
+    for (const event of [
+      ...captureEvents,
+      ...contentEvents.filter(
+        (event) => event.type === 'commitment_created' || event.type === 'commitment_completed',
+      ),
+    ]) {
       const capture = captureById.get(event.referenceId)
-      const type = capture?.type || event.metadata?.type || 'note'
+      const type =
+        event.type === 'commitment_created' || event.type === 'commitment_completed'
+          ? 'commitment'
+          : capture?.type || event.metadata?.type || 'note'
       if (!byType.has(type)) byType.set(type, [])
       byType.get(type).push(event)
     }
@@ -871,143 +908,118 @@ function ClubTimelineBlock({
     return [...known, ...extras].map((type) => ({ type, events: byType.get(type) }))
   })()
 
-  const rawName = club?.name || fallbackName || ''
-  const name = rawName && !/^undefined\b/i.test(rawName) ? rawName : 'Meeting session'
-
-  const rangeText = startedAt
-    ? `${clockTime(startedAt)}${endedAt ? ` – ${clockTime(endedAt)}` : ' – now'}`
-    : null
-
-  const durationText = (() => {
-    if (!startedAt || !endedAt) return null
-    const minutes = Math.max(
-      0,
-      Math.round((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 60000),
-    )
-    if (minutes < 1) return '<1 min'
-    if (minutes < 60) return `${minutes} min`
-    const hours = Math.floor(minutes / 60)
-    const rest = minutes % 60
-    return rest ? `${hours}h ${rest}m` : `${hours}h`
-  })()
-
   return (
-    <li className="relative">
-      <div className={cn('relative overflow-hidden rounded-2xl border shadow-xs', palette.card)}>
-        {/* Session accent rail - visually binds the captures into one session */}
+    <li className="relative flex items-start gap-3 pl-11 sm:pl-13">
+      <span
+        className={cn(
+          'absolute top-4 left-1.5 z-10 flex size-7 items-center justify-center rounded-full border-2 border-card shadow-xs sm:left-2',
+          palette.rail,
+        )}
+        aria-hidden="true"
+      >
+        <UsersThree size={14} weight="bold" className="text-ink-inverse" />
+      </span>
+      <div className="relative w-full overflow-hidden rounded-2xl border border-line/80 bg-card shadow-md">
+        {/* A quiet accent rail keeps the session anchored without coloring the surface. */}
         <span className={cn('absolute inset-y-0 left-0 w-1', palette.rail)} aria-hidden="true" />
 
         {/* Session header */}
-        <header
-          className={cn(
-            'flex flex-wrap items-center gap-x-2 gap-y-1 border-b py-2.5 pr-3 pl-4',
-            palette.header,
-          )}
-        >
-          <span
-            className={cn(
-              'inline-flex size-6 items-center justify-center rounded-lg shadow-xs',
-              palette.badge,
-            )}
-          >
-            <Users size={13} weight="bold" />
-          </span>
+        <header className="flex flex-wrap items-center gap-3 border-b border-line/80 bg-card px-5 py-4">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-small font-semibold text-ink">{name}</p>
-            <p className="flex flex-wrap items-center gap-x-1.5 text-[11px] text-ink-muted">
-              <span className={cn('font-semibold tracking-[0.06em] uppercase', palette.label)}>
-                Session
-              </span>
-              {rangeText ? (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="inline-flex items-center gap-1">
-                    <Clock size={10} />
-                    {rangeText}
-                  </span>
-                </>
-              ) : null}
-              {durationText ? (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span>{durationText}</span>
-                </>
-              ) : null}
-              <span aria-hidden="true">·</span>
-              <span className="font-medium">
-                {captureCount} {captureCount === 1 ? 'capture' : 'captures'}
-              </span>
+            <p className={cn('flex items-center gap-1.5 text-tiny font-semibold uppercase tracking-[0.12em]', palette.label)}>
+              <UsersThree size={13} weight="bold" />
+              Session
+            </p>
+            <p className="mt-1 text-small text-ink-muted">
+              {captureCount} {captureCount === 1 ? 'capture' : 'captures'}
             </p>
           </div>
-          {isActive ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-              <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-              Live
-            </span>
-          ) : (
-            <span className="rounded-full bg-overlay px-2 py-0.5 text-[10px] font-semibold text-ink-muted">
-              Ended
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {isActive ? (
+              <>
+                <span className="flex items-center gap-1.5 rounded-full border border-danger/30 bg-danger/10 px-2.5 py-1 text-tiny font-semibold text-danger animate-pulse">
+                  <span className="size-1.5 rounded-full bg-danger" />
+                  Live
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDiscard}
+                  disabled={acting}
+                  className="h-7 px-2 text-tiny font-medium text-ink-muted hover:text-danger hover:bg-danger/10 cursor-pointer"
+                  title="Discard this session"
+                >
+                  Discard
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEnd}
+                  disabled={acting}
+                  className="h-7 px-2.5 text-tiny font-medium text-ink border-line/80 hover:bg-surface cursor-pointer"
+                  title="End and close this session"
+                >
+                  End Session
+                </Button>
+              </>
+            ) : (
+              <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-tiny font-semibold text-ink-muted">
+                Ended
+              </span>
+            )}
+          </div>
         </header>
 
         {/* Captures recorded during this session, one card per capture type */}
-        <div className="py-3 pr-3 pl-4">
+        <div className="px-5 py-4">
           {contentEvents.length === 0 ? (
-            <p className="text-tiny text-ink-subtle">No captures in this session.</p>
+            <p className="text-small text-ink-subtle">No captures in this session.</p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="grid gap-x-8 gap-y-4 lg:grid-cols-2">
               {groupedContent.map((group) => (
-                <section key={group.type}>
-                  <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] text-ink-subtle uppercase">
-                    {SESSION_TYPE_LABELS[group.type] ?? group.type}
-                    <span className="rounded-full bg-overlay px-1.5 py-0.5 text-[10px] font-bold text-ink-muted">
-                      {group.events.length}
-                    </span>
-                  </p>
+                <section key={group.type} className="min-w-0 border-t border-line/80 pt-3 first:border-t-0 first:pt-0 lg:[&:nth-child(2)]:border-t-0 lg:[&:nth-child(2)]:pt-0">
+                  <header className="flex items-center justify-between gap-2 pb-2">
+                    <div className="flex items-center gap-2">
+                      <CaptureTypeChip type={group.type} className="h-5 px-2 text-[10px]" />
+                      <span className="text-tiny font-medium text-ink-muted">
+                        {group.events.length} {group.events.length === 1 ? 'entry' : 'entries'}
+                      </span>
+                    </div>
+                  </header>
 
-                  <ul className="divide-y divide-line/60 overflow-hidden rounded-xl border border-line/70 bg-card">
+                  <ul>
                     {group.events.map((event) => {
                       const capture = captureById.get(event.referenceId)
+                      const commitment = commitmentById.get(event.referenceId)
                       const content =
                         capture?.content ||
+                        commitment?.description ||
                         event.metadata?.content ||
                         event.metadata?.content_snippet ||
                         'Note added to thread'
-                      const rowId = capture?.id ?? event.id
 
                       return (
-                        <li
-                          key={event.id}
-                          className="group/row flex items-start gap-2.5 px-3 py-2.5"
-                        >
+                        <li key={event.id} className="flex items-start gap-2.5 py-2">
                           <span
                             className={cn(
                               'mt-[7px] size-1.5 shrink-0 rounded-full',
-                              SESSION_TYPE_DOTS[group.type] ?? 'bg-ink-subtle',
+                              event.type === 'commitment_completed'
+                                ? 'bg-success'
+                                : SESSION_TYPE_DOTS[group.type] ?? 'bg-ink-subtle',
                             )}
                             aria-hidden="true"
                           />
-                          <p
-                            className={cn(
-                              'min-w-0 flex-1 text-[13.5px] leading-relaxed text-ink',
-                              group.type === 'decision' && 'font-medium',
-                            )}
-                          >
-                            {content}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => onCopy(content, rowId)}
-                            title="Copy content"
-                            className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-subtle opacity-0 transition-all hover:bg-overlay hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100"
-                          >
-                            {copiedId === rowId ? (
-                              <Check size={12} className="text-emerald-500" />
-                            ) : (
-                              <CopySimple size={12} />
-                            )}
-                          </button>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={cn(
+                                'text-[14px] leading-relaxed tracking-[-0.005em] text-ink',
+                                group.type === 'decision' && 'font-medium',
+                                event.type === 'commitment_completed' && 'line-through decoration-success/40',
+                              )}
+                            >
+                              {content}
+                            </p>
+                          </div>
                         </li>
                       )
                     })}
@@ -1023,8 +1035,6 @@ function ClubTimelineBlock({
                       event={event}
                       capture={captureById.get(event.referenceId)}
                       commitment={commitmentById.get(event.referenceId)}
-                      isCopied={copiedId === (captureById.get(event.referenceId)?.id ?? event.id)}
-                      onCopy={onCopy}
                       inSession
                     />
                   ))}

@@ -168,6 +168,14 @@ export const threadsApi = {
       ENDPOINTS.threads.snooze(threadId),
       env.useMockApi ? { days } : { snooze_until: snoozeUntilIso(days) },
     ),
+
+  /** Link a person to a thread (backend: POST /threads/{id}/people). */
+  addPerson: (threadId, personId) =>
+    http.post(ENDPOINTS.threads.people(threadId), { person_id: personId }),
+
+  /** Unlink a person from a thread (backend: DELETE /threads/{id}/people/{personId}). */
+  removePerson: (threadId, personId) =>
+    http.delete(ENDPOINTS.threads.person(threadId, personId)),
 }
 
 /** Capture API - the write path behind Quick Capture everywhere in the app. */

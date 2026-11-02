@@ -7,8 +7,8 @@ export function Card({ className, interactive = false, children, ...props }) {
   return (
     <div
       className={cn(
-        'rounded-xl border border-line bg-card p-3.5 shadow-sm transition-all duration-150',
-        interactive && 'cursor-pointer hover:shadow-md hover:border-line/80 hover:-translate-y-0.5 active:scale-[0.99]',
+        'rounded-2xl border border-line/80 bg-card p-3.5 shadow-sm transition-all duration-150',
+        interactive && 'cursor-pointer hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md active:scale-[0.99]',
         className,
       )}
       {...props}

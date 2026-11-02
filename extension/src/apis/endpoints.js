@@ -29,6 +29,7 @@ export const ENDPOINTS = Object.freeze({
   clubs: {
     start: () => '/clubs/start',
     end: (clubId) => `/clubs/${clubId}/end`,
+    discard: (clubId) => `/clubs/${clubId}/discard`,
     detail: (clubId) => `/clubs/${clubId}`,
     byThread: (threadId) => `/threads/${threadId}/clubs`,
   },

@@ -9,14 +9,12 @@ import { FilterPills, SelectMenu, StaggerGroup, StaggerItem, Toolbar } from '@/c
 import { EmptyState, ThreadListSkeleton } from '@/components/ui/Feedback'
 import { THREAD_FILTERS, THREAD_SORTS } from '@/config/constants'
 import { useThreads } from '@/hooks/useData'
-import { useUiStore } from '@/store'
 
 /**
  * Threads list (Feature 2).
  */
 export function ThreadsPage() {
   const { threads, isLoading, error, filter, sort, refresh, setFilter, setSort } = useThreads()
-  const openQuickCapture = useUiStore((state) => state.openQuickCapture)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -34,15 +32,10 @@ export function ThreadsPage() {
         eyebrow="Threads"
         title="Your relationships"
         actions={
-          <>
-            <Button variant="ghost" size="sm" onClick={() => openQuickCapture(null)}>
-              Quick capture
-            </Button>
-            <Button size="sm" onClick={() => setDialogOpen(true)} className="gap-1.5 shadow-sm">
-              <Plus size={14} weight="bold" />
-              New thread
-            </Button>
-          </>
+          <Button size="sm" onClick={() => setDialogOpen(true)} className="gap-1.5 shadow-sm">
+            <Plus size={14} weight="bold" />
+            New thread
+          </Button>
         }
       />
 
@@ -67,7 +60,7 @@ export function ThreadsPage() {
       </Toolbar>
 
       {isLoading && threads.length === 0 ? (
-        <ThreadListSkeleton count={4} />
+        <ThreadListSkeleton count={6} className="lg:grid-cols-3" />
       ) : error ? (
         <EmptyState
           title="Couldn't load your threads"
@@ -88,7 +81,7 @@ export function ThreadsPage() {
           action={<Button onClick={() => setDialogOpen(true)}>Create a thread</Button>}
         />
       ) : (
-        <StaggerGroup as="ul" className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+        <StaggerGroup as="ul" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {threads.map((thread) => (
             <StaggerItem as="li" key={thread.id}>
               <ThreadCard thread={thread} to={`/threads/${thread.id}`} />

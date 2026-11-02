@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog'
+import { StaggerGroup, StaggerItem } from '@/components/ui'
 import { cn, uid } from '@/lib/utils'
 
 /**
@@ -24,7 +25,7 @@ import { cn, uid } from '@/lib/utils'
 export function BrainDumpDialog({ open, onOpenChange }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined}>
+      <DialogContent className="sm:w-[min(620px,94vw)]" aria-describedby={undefined}>
         {open ? <BrainDumpContent onOpenChange={onOpenChange} /> : null}
       </DialogContent>
     </Dialog>
@@ -227,77 +228,83 @@ function BrainDumpContent({ onOpenChange }) {
     )
   }
 
+  const lineCount = (text.match(/^.+$/gm) || []).length
+
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>
-          <span className="flex items-center gap-1.5">
-            <Brain size={17} weight="duotone" className="text-primary" />
-            Brain dump
+      <DialogHeader className="gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/15">
+            <Brain size={18} weight="duotone" />
           </span>
-        </DialogTitle>
-        <DialogDescription>
-          {step === 'dump'
-            ? mode === 'ai'
-              ? 'One thought per line. AI Smart Triage analyzes type and thread with Gemini.'
-              : 'One thought per line. Instant rules evaluate types and threads locally.'
-            : entries.some((e) => e.sourceMode === 'ai')
-              ? 'Triaged with Gemini AI. Adjust assignments and types before filing.'
-              : 'Triaged with Instant Rules. Adjust assignments and types before filing.'}
-        </DialogDescription>
+          <div className="min-w-0">
+            <DialogTitle className="text-heading-3 font-semibold tracking-tight text-ink">
+              Brain dump
+            </DialogTitle>
+            {step === 'dump' ? null : (
+              <DialogDescription className="text-tiny text-ink-muted">
+                {entries.some((e) => e.sourceMode === 'ai')
+                  ? 'Triaged with Gemini AI. Adjust assignments and types before filing.'
+                  : 'Triaged with Instant Rules. Adjust assignments and types before filing.'}
+              </DialogDescription>
+            )}
+          </div>
+        </div>
       </DialogHeader>
 
       {step === 'dump' ? (
         <div className="space-y-3">
           {/* Segmented Mode Selector */}
-          <div className="flex items-center justify-between rounded-lg border border-line bg-overlay/60 p-1">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => handleModeChange('ai')}
-                disabled={analyzing}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-tiny font-medium transition-all cursor-pointer',
-                  mode === 'ai'
-                    ? 'bg-card text-primary shadow-xs ring-1 ring-line font-semibold'
-                    : 'text-ink-subtle hover:text-ink',
-                )}
-              >
-                <Sparkle size={13} weight={mode === 'ai' ? 'bold' : 'regular'} className={mode === 'ai' ? 'text-primary' : ''} />
-                <span>AI Smart Triage</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange('rules')}
-                disabled={analyzing}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-tiny font-medium transition-all cursor-pointer',
-                  mode === 'rules'
-                    ? 'bg-card text-primary shadow-xs ring-1 ring-line font-semibold'
-                    : 'text-ink-subtle hover:text-ink',
-                )}
-              >
-                <Lightning size={13} weight={mode === 'rules' ? 'bold' : 'regular'} className={mode === 'rules' ? 'text-primary' : ''} />
-                <span>Instant Rules</span>
-              </button>
-            </div>
-
-            <span className="text-[11px] text-ink-subtle pr-1.5 hidden sm:inline">
-              {mode === 'ai' ? 'Gemini AI reasoning' : 'Offline regex matching'}
-            </span>
+          <div className="inline-flex w-fit items-center gap-1 rounded-xl border border-line bg-overlay/60 p-1">
+            <button
+              type="button"
+              onClick={() => handleModeChange('ai')}
+              disabled={analyzing}
+              className={cn(
+                'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-tiny font-medium transition-all',
+                mode === 'ai'
+                  ? 'bg-card text-primary shadow-xs ring-1 ring-line font-semibold'
+                  : 'text-ink-subtle hover:text-ink',
+              )}
+            >
+              <Sparkle size={14} weight={mode === 'ai' ? 'bold' : 'regular'} />
+              <span>AI Smart Triage</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange('rules')}
+              disabled={analyzing}
+              className={cn(
+                'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-tiny font-medium transition-all',
+                mode === 'rules'
+                  ? 'bg-card text-primary shadow-xs ring-1 ring-line font-semibold'
+                  : 'text-ink-subtle hover:text-ink',
+              )}
+            >
+              <Lightning size={14} weight={mode === 'rules' ? 'bold' : 'regular'} />
+              <span>Instant Rules</span>
+            </button>
           </div>
 
-          <textarea
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            disabled={analyzing}
-            rows={8}
-            autoFocus
-            placeholder={
-              'Call Priya about design handoff\nAditya wants the API spec by Monday\nInvestor call — ask about the Series A intro'
-            }
-            className="w-full resize-none rounded-md border border-line bg-overlay px-3 py-2.5 text-body leading-relaxed focus:border-primary focus:outline-none disabled:opacity-50"
-          />
+          <div className="tw-rise overflow-hidden rounded-xl border border-line bg-card shadow-xs transition-colors focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
+            <textarea
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              disabled={analyzing}
+              rows={8}
+              autoFocus
+              placeholder={
+                'Call Priya about design handoff\nAditya wants the API spec by Monday\nInvestor call — ask about the Series A intro'
+              }
+              className="w-full resize-none bg-transparent px-4 py-3 text-body leading-relaxed text-ink placeholder:text-ink-subtle focus:outline-none disabled:opacity-50"
+            />
+            <div className="flex items-center justify-between gap-2 border-t border-line/60 bg-overlay/40 px-3.5 py-2">
+              <span className="text-tiny text-ink-subtle">One thought per line</span>
+              <span className="text-tiny font-medium tabular-nums text-ink-muted">
+                {lineCount} {lineCount === 1 ? 'line' : 'lines'}
+              </span>
+            </div>
+          </div>
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={analyzing}>
@@ -308,7 +315,7 @@ function BrainDumpContent({ onOpenChange }) {
                 'Analyzing with AI...'
               ) : (
                 <>
-                  Review
+                  {lineCount > 0 ? `Review ${lineCount}` : 'Review'}
                   {mode === 'ai' ? <Sparkle size={14} weight="bold" /> : <ArrowRight size={14} weight="bold" />}
                 </>
               )}
@@ -320,7 +327,7 @@ function BrainDumpContent({ onOpenChange }) {
           {/* Top banner summarizing the AI triage results */}
           <div
             className={cn(
-              'mb-3 flex items-center justify-between rounded-lg border px-3 py-2 text-tiny',
+              'mb-3 flex items-center justify-between rounded-xl border px-3 py-2 text-tiny',
               entries.some((e) => e.sourceMode === 'ai')
                 ? 'border-primary/25 bg-primary-light/40 text-primary-dark'
                 : entries.some((e) => e.sourceMode === 'fallback')
@@ -349,15 +356,16 @@ function BrainDumpContent({ onOpenChange }) {
             </span>
           </div>
 
-          <ul className="flex max-h-80 flex-col gap-2.5 overflow-y-auto scroll-slim pr-0.5">
+          <StaggerGroup as="ul" className="flex max-h-80 flex-col gap-2.5 overflow-y-auto scroll-slim pr-0.5">
             {entries.map((entry) => (
-              <li
+              <StaggerItem
+                as="li"
                 key={entry.id}
                 className={cn(
-                  'rounded-lg border p-3 transition-colors',
+                  'rounded-xl border p-3 transition-colors',
                   entry.include
-                    ? 'border-line bg-card shadow-2xs'
-                    : 'border-line bg-overlay/60 opacity-60',
+                    ? 'border-line bg-card shadow-xs'
+                    : 'border-dashed border-line bg-overlay/40 opacity-70',
                 )}
               >
                 <div className="flex items-start gap-2.5">
@@ -480,9 +488,9 @@ function BrainDumpContent({ onOpenChange }) {
                     )}
                   </div>
                 )}
-              </li>
+              </StaggerItem>
             ))}
-          </ul>
+          </StaggerGroup>
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setStep('dump')} disabled={saving}>

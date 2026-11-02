@@ -51,6 +51,7 @@ class SubThreadType(str, enum.Enum):
     question = "question"
     commitment = "commitment"
     decision = "decision"
+    action = "action"
 
 
 class CaptureSource(str, enum.Enum):
@@ -81,6 +82,7 @@ class TimelineEventType(str, enum.Enum):
     thread_created = "thread_created"
     summary_generated = "summary_generated"
     brief_opened = "brief_opened"
+    capture_added = "capture_added"
 
 
 class SummaryType(str, enum.Enum):

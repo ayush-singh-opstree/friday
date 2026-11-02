@@ -18,26 +18,38 @@ export function Skeleton({ className }) {
 /** Skeleton shaped like a thread card. */
 export function ThreadCardSkeleton({ className }) {
   return (
-    <div className={cn('rounded-xl border border-line bg-card p-4', className)}>
-      <div className="flex items-center justify-between gap-3">
-        <Skeleton className="h-4 w-44" />
-        <Skeleton className="size-7 rounded-full" />
+    <div className={cn('relative overflow-hidden rounded-2xl border border-line/80 bg-card p-4.5 shadow-xs sm:p-5', className)}>
+      <Skeleton className="absolute inset-x-0 top-0 h-1 rounded-none" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <Skeleton className="h-4 w-3/5" />
+          <Skeleton className="mt-2 h-3 w-2/5" />
+        </div>
+        <Skeleton className="size-9 shrink-0 rounded-full" />
       </div>
-      <Skeleton className="mt-3 h-3 w-28" />
-      <Skeleton className="mt-2 h-3 w-3/4" />
+      <Skeleton className="mt-3 h-3 w-4/5" />
+      <Skeleton className="mt-1.5 h-3 w-3/5" />
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-line/60 pt-3">
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-6 rounded-full" />
+          <Skeleton className="h-3.5 w-16" />
+        </div>
+        <Skeleton className="h-4 w-16 rounded-full" />
+      </div>
     </div>
   )
 }
 
-export function ThreadListSkeleton({ count = 3 }) {
+export function ThreadListSkeleton({ count = 6, className }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className={cn('grid gap-3 sm:grid-cols-2 2xl:grid-cols-3', className)}>
       {Array.from({ length: count }).map((_, index) => (
         <ThreadCardSkeleton key={index} />
       ))}
     </div>
   )
 }
+
 
 /** Centred loading state for a route or panel. */
 export function LoadingState({ label = 'Loading…', className }) {

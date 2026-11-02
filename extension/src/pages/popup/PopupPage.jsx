@@ -1,4 +1,4 @@
-import { GearSix } from '@/components/icons'
+import { GearSix, SidebarSimple } from '@/components/icons'
 import { ProtectedView } from '@/authorization'
 import { Logo } from '@/components/common/Logo'
 import { ThemeToggle } from '@/components/common/ThemeToggle'
@@ -24,12 +24,23 @@ export function PopupPage() {
     return `${m}:${s}`
   }
 
+  const handleOpenCompanion = async () => {
+    try {
+      await openSidePanel()
+    } catch (err) {
+      console.error('Failed to open companion side panel:', err)
+    } finally {
+      // Close popup so user seamlessly transitions into companion mode
+      window.close()
+    }
+  }
+
   return (
-    <div className="flex w-[370px] min-h-[470px] flex-col bg-surface">
-      <header className="flex items-center justify-between border-b border-line bg-card/95 px-3.5 py-2 backdrop-blur-sm">
+    <div className="flex min-h-[470px] w-[370px] max-w-full flex-col bg-surface overflow-x-hidden">
+      <header className="flex h-12 items-center justify-between border-b border-line/80 bg-card px-4 shadow-sm">
         <div className="flex items-center gap-2">
           <Logo size={22} />
-          <span className="text-small font-bold text-ink tracking-tight">Friday</span>
+          <span className="text-small font-bold tracking-[-0.02em] text-ink">Friday</span>
         </div>
         <div className="flex items-center gap-1.5">
           {activeSession ? (
@@ -43,6 +54,13 @@ export function PopupPage() {
               </span>
             </div>
           ) : null}
+          <IconButton
+            label="Open Companion Side Panel"
+            size="sm"
+            onClick={handleOpenCompanion}
+          >
+            <SidebarSimple size={16} />
+          </IconButton>
           <ThemeToggle />
           <IconButton label="Settings" size="sm" onClick={openOptions}>
             <GearSix size={16} />
@@ -54,7 +72,7 @@ export function PopupPage() {
         title="Sign in to Friday"
         description="Capture context and track commitments from any page without switching tabs."
       >
-        <ThreadSessionFlow onOpenCompanion={openSidePanel} />
+        <ThreadSessionFlow onOpenCompanion={handleOpenCompanion} />
       </ProtectedView>
     </div>
   )

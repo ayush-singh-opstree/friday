@@ -173,6 +173,18 @@ export const useThreadStore = create((set, get) => ({
     await get().fetchThreads()
   },
 
+  /** Link a person to the thread, then refresh the detail (people + timeline). */
+  async addPerson(threadId, personId) {
+    await threadsApi.addPerson(threadId, personId)
+    await get().selectThread(threadId)
+  },
+
+  /** Unlink a person from the thread, then refresh the detail. */
+  async removePerson(threadId, personId) {
+    await threadsApi.removePerson(threadId, personId)
+    await get().selectThread(threadId)
+  },
+
   async deleteThread(threadId) {
     await threadsApi.remove(threadId)
     set((state) => ({

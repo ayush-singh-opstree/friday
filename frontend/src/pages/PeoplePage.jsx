@@ -6,7 +6,7 @@ import { PersonRow } from '@/components/person/PersonRow'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Controls'
 import { StaggerGroup, StaggerItem, Toolbar } from '@/components/ui'
-import { EmptyState, LoadingState } from '@/components/ui/Feedback'
+import { EmptyState, Skeleton } from '@/components/ui/Feedback'
 import { useDebounce } from '@/hooks/useDebounce'
 import { usePeople } from '@/hooks/useData'
 import { useNavigate } from 'react-router-dom'
@@ -61,7 +61,7 @@ export function PeoplePage() {
       </Toolbar>
 
       {isLoading && people.length === 0 ? (
-        <LoadingState label="Loading your directory…" />
+        <PeopleSkeleton />
       ) : error ? (
         <EmptyState
           title="Couldn't load your directory"
@@ -98,5 +98,32 @@ export function PeoplePage() {
         onViewExisting={(personId) => navigate(`/people/${personId}`)}
       />
     </PageContainer>
+  )
+}
+
+
+function PeopleSkeleton({ count = 8 }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" role="status" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading your directory</span>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex h-full flex-col justify-between gap-3 rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
+          <div>
+            <div className="flex items-start gap-3">
+              <Skeleton className="size-10 shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="mt-1.5 h-3 w-1/2" />
+              </div>
+            </div>
+            <Skeleton className="mt-2.5 h-3 w-2/3" />
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 border-t border-line/50 pt-2.5">
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }

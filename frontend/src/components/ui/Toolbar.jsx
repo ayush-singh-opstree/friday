@@ -1,3 +1,5 @@
+import { useId } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -26,6 +28,9 @@ const PILL_SIZES = {
  * space runs out.
  */
 export function FilterPills({ options = [], value, onChange, label, size = 'md', className }) {
+  const layoutId = useId()
+  const reduceMotion = useReducedMotion()
+
   return (
     <div
       role="tablist"
@@ -45,14 +50,24 @@ export function FilterPills({ options = [], value, onChange, label, size = 'md',
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              'shrink-0 rounded-full font-medium transition-all duration-150',
+              'relative shrink-0 rounded-full font-medium transition-colors duration-150',
               PILL_SIZES[size] ?? PILL_SIZES.md,
               active
-                ? 'bg-primary text-ink-inverse shadow-sm'
+                ? 'text-ink-inverse'
                 : 'bg-overlay text-ink-muted hover:bg-line hover:text-ink',
             )}
           >
-            {option.label}
+            {active ? (
+              <motion.span
+                layoutId={layoutId}
+                aria-hidden="true"
+                className="absolute inset-0 rounded-full bg-primary shadow-sm"
+                transition={
+                  reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 32 }
+                }
+              />
+            ) : null}
+            <span className="relative z-10">{option.label}</span>
           </button>
         )
       })}

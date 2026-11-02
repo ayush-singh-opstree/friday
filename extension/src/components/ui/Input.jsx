@@ -2,10 +2,10 @@ import { forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 
 const FIELD_BASE =
-  'w-full rounded-xl border bg-overlay text-ink placeholder:text-ink-subtle transition-all duration-150 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
+  'w-full rounded-xl border bg-card text-ink placeholder:text-ink-subtle transition-all duration-150 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
 
 const FIELD_STATE = {
-  default: 'border-line focus:border-primary focus:ring-3 focus:ring-primary/12 focus:bg-card',
+  default: 'border-line/90 focus:border-primary focus:ring-3 focus:ring-primary/12 focus:bg-card',
   error: 'border-danger focus:border-danger focus:ring-3 focus:ring-danger/12',
 }
 

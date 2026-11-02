@@ -19,7 +19,14 @@ export function ToastViewport() {
       theme={theme === 'light' || theme === 'dark' ? theme : 'system'}
       richColors
       closeButton
-      toastOptions={{ duration: 4200 }}
+      toastOptions={{
+        duration: 4200,
+        classNames: {
+          toast: 'min-h-12 w-[min(340px,calc(100vw-1.5rem))] rounded-xl px-3.5 py-3 shadow-lg',
+          title: 'text-small font-semibold leading-snug',
+          description: 'text-tiny leading-relaxed',
+        },
+      }}
     />
   )
 }

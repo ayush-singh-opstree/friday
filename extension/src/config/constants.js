@@ -15,6 +15,7 @@ export const STORAGE_KEYS = Object.freeze({
   RECENT_SEARCHES: 'threadwise.recentSearches',
   LAST_SYNC: 'threadwise.lastSyncedAt',
   INJECTION_ENABLED: 'threadwise.injectionEnabled',
+  SESSION_FLOW: 'threadwise.sessionFlow',
 })
 
 /** Runtime message contract between UI surfaces, content scripts and the worker. */
