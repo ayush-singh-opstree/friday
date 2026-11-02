@@ -1,0 +1,886 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckSquare,
+  CopySimple,
+  Lightning,
+  MagnifyingGlass,
+  Note,
+  Plus,
+  Question,
+  Trash,
+  X,
+} from '@/components/icons'
+import {
+  Avatar,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  Field,
+  Input,
+  LoadingState,
+  Textarea,
+} from '@/components/ui'
+import { usePeople, useThreads } from '@/hooks'
+import { useCaptureStore, useThreadStore } from '@/store'
+import { cn } from '@/lib/utils'
+import { relativeTime } from '@/lib/date'
+
+const CAPTURE_TYPE_OPTIONS = [
+  { value: 'action', label: 'Action', icon: Lightning, tone: 'action' },
+  { value: 'decision', label: 'Decision', icon: CheckSquare, tone: 'decision' },
+  { value: 'question', label: 'Question', icon: Question, tone: 'question' },
+  { value: 'note', label: 'Note', icon: Note, tone: 'note' },
+]
+
+/**
+ * ThreadSessionFlow - Clean, consolidated extension experience:
+ * 1. Home: Create New Thread / Search Threads / Recent Threads (No Needs Attention).
+ * 2. Create Thread: Title & Description -> Add People (Existing or Create New).
+ * 3. Live Capture Session: Rapid multi-type logging with active timer.
+ * 4. Stop Capturing: Frontend clubbing into a structured session recap.
+ */
+export function ThreadSessionFlow({ onOpenCompanion }) {
+  const { threads, isLoading: threadsLoading, refresh: refreshThreads } = useThreads({ autoLoad: true })
+  const { people, createPerson, refresh: refreshPeople } = usePeople({ autoLoad: true })
+  const createCapture = useCaptureStore((state) => state.createCapture)
+  const createThread = useThreadStore((state) => state.createThread)
+
+  // Step state: 'home' | 'new_details' | 'new_people' | 'session' | 'summary'
+  const [step, setStep] = useState('home')
+
+  // Search in home
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Create thread form
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [selectedPersonIds, setSelectedPersonIds] = useState([])
+
+  // Inline create person form
+  const [showCreatePerson, setShowCreatePerson] = useState(false)
+  const [newPersonName, setNewPersonName] = useState('')
+  const [newPersonRole, setNewPersonRole] = useState('')
+  const [newPersonOrg, setNewPersonOrg] = useState('')
+  const [personSearch, setPersonSearch] = useState('')
+  const [creatingPerson, setCreatingPerson] = useState(false)
+  const [creatingThread, setCreatingThread] = useState(false)
+
+  // Active Capture Session state
+  const [activeThread, setActiveThread] = useState(null)
+  const [sessionCaptures, setSessionCaptures] = useState([])
+  const [captureInput, setCaptureInput] = useState('')
+  const [captureType, setCaptureType] = useState('action')
+  const [sessionElapsed, setSessionElapsed] = useState(0)
+  const [stoppingSession, setStoppingSession] = useState(false)
+
+  // Summary state
+  const [clubbedSummary, setClubbedSummary] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  // Active session timer
+  const captureInputRef = useRef(null)
+
+  useEffect(() => {
+    if (step !== 'session') return undefined
+    const interval = setInterval(() => {
+      setSessionElapsed((prev) => prev + 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [step])
+
+  // Filtered threads for home
+  const filteredThreads = useMemo(() => {
+    const list = threads.filter((t) => t.status === 'active')
+    if (!searchQuery.trim()) return list
+    const q = searchQuery.toLowerCase().trim()
+    return list.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        (t.description && t.description.toLowerCase().includes(q)),
+    )
+  }, [threads, searchQuery])
+
+  // Filtered people for person selection
+  const filteredPeople = useMemo(() => {
+    if (!personSearch.trim()) return people
+    const q = personSearch.toLowerCase().trim()
+    return people.filter(
+      (p) =>
+        p.fullName?.toLowerCase().includes(q) ||
+        p.organisation?.toLowerCase().includes(q) ||
+        p.role?.toLowerCase().includes(q),
+    )
+  }, [people, personSearch])
+
+  // Format MM:SS
+  const formatTimer = (seconds) => {
+    const m = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, '0')
+    const s = (seconds % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
+  }
+
+  // Handle adding an inline person
+  const handleCreatePersonInline = async (e) => {
+    e.preventDefault()
+    if (!newPersonName.trim()) return
+    setCreatingPerson(true)
+    try {
+      const created = await createPerson({
+        fullName: newPersonName.trim(),
+        role: newPersonRole.trim() || undefined,
+        organisation: newPersonOrg.trim() || undefined,
+      })
+      if (created?.id) {
+        setSelectedPersonIds((prev) => [...prev, created.id])
+      }
+      setNewPersonName('')
+      setNewPersonRole('')
+      setNewPersonOrg('')
+      setShowCreatePerson(false)
+      refreshPeople()
+    } catch {
+      // ignore
+    } finally {
+      setCreatingPerson(false)
+    }
+  }
+
+  // Toggle person selection
+  const togglePersonSelect = (id) => {
+    setSelectedPersonIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    )
+  }
+
+  // Start session for a newly created thread
+  const handleCreateAndStartSession = async () => {
+    if (!title.trim()) return
+    setCreatingThread(true)
+    try {
+      const thread = await createThread({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        personIds: selectedPersonIds,
+      })
+      if (thread) {
+        setActiveThread(thread)
+        setSessionCaptures([])
+        setCaptureInput('')
+        setSessionElapsed(0)
+        setStep('session')
+        refreshThreads()
+      }
+    } catch {
+      // fallback
+    } finally {
+      setCreatingThread(false)
+    }
+  }
+
+  // Start session for an existing thread
+  const handleStartExistingThreadSession = (thread) => {
+    setActiveThread(thread)
+    setSessionCaptures([])
+    setCaptureInput('')
+    setSessionElapsed(0)
+    setStep('session')
+  }
+
+  // Add capture in session
+  const handleAddCapture = (e) => {
+    if (e) e.preventDefault()
+    const content = captureInput.trim()
+    if (!content) return
+
+    setSessionCaptures((prev) => [
+      ...prev,
+      {
+        id: `sess_cap_${Date.now()}_${Math.random()}`,
+        content,
+        type: captureType,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ])
+    setCaptureInput('')
+    if (captureInputRef.current) {
+      captureInputRef.current.focus()
+    }
+  }
+
+  // Remove capture from session
+  const handleRemoveCapture = (id) => {
+    setSessionCaptures((prev) => prev.filter((c) => c.id !== id))
+  }
+
+  // Stop capturing & perform Frontend Clubbing
+  const handleStopAndClub = async () => {
+    if (!activeThread) return
+    setStoppingSession(true)
+
+    try {
+      // 1. Save all individual structured captures
+      for (const cap of sessionCaptures) {
+        try {
+          await createCapture({
+            content: cap.content,
+            type: cap.type,
+            threadId: activeThread.id,
+            source: 'extension_session',
+          })
+        } catch {
+          // Continue saving remaining captures
+        }
+      }
+
+      // 2. Perform frontend clubbing into a comprehensive Session Recap
+      const decisions = sessionCaptures.filter((c) => c.type === 'decision')
+      const actions = sessionCaptures.filter((c) => c.type === 'action')
+      const questions = sessionCaptures.filter((c) => c.type === 'question')
+      const notes = sessionCaptures.filter((c) => c.type === 'note')
+
+      const dateStr = new Date().toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+      const timeStr = new Date().toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+      const durationStr = formatTimer(sessionElapsed)
+
+      const participantNames = selectedPersonIds
+        .map((id) => people.find((p) => p.id === id)?.fullName)
+        .filter(Boolean)
+
+      const summaryParts = [
+        `📋 Session Recap: ${activeThread.title}`,
+        `🗓️ ${dateStr} at ${timeStr} · Duration: ${durationStr}`,
+        participantNames.length ? `👥 Participants: ${participantNames.join(', ')}` : null,
+        '',
+        decisions.length
+          ? `🎯 Decisions (${decisions.length}):\n${decisions.map((d) => `• ${d.content}`).join('\n')}\n`
+          : null,
+        actions.length
+          ? `⚡ Actions (${actions.length}):\n${actions.map((a) => `• ${a.content}`).join('\n')}\n`
+          : null,
+        questions.length
+          ? `❓ Questions (${questions.length}):\n${questions.map((q) => `• ${q.content}`).join('\n')}\n`
+          : null,
+        notes.length
+          ? `📝 Notes (${notes.length}):\n${notes.map((n) => `• ${n.content}`).join('\n')}\n`
+          : null,
+      ]
+        .filter((part) => part !== null)
+        .join('\n')
+        .trim()
+
+      // 3. Save the clubbed summary capture
+      await createCapture({
+        content: summaryParts,
+        type: 'note',
+        threadId: activeThread.id,
+        source: 'clubbed_session',
+      })
+
+      setClubbedSummary(summaryParts)
+      setStep('summary')
+      refreshThreads()
+    } catch {
+      // Continue to summary even if partial save
+      setStep('summary')
+    } finally {
+      setStoppingSession(false)
+    }
+  }
+
+  // Copy clubbed recap
+  const handleCopySummary = () => {
+    if (!clubbedSummary) return
+    navigator.clipboard.writeText(clubbedSummary)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  // Reset to home
+  const handleResetHome = () => {
+    setStep('home')
+    setTitle('')
+    setDescription('')
+    setSelectedPersonIds([])
+    setActiveThread(null)
+    setSessionCaptures([])
+    setCaptureInput('')
+    setClubbedSummary('')
+    setSearchQuery('')
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 1: HOME (Start with Create Thread / Search / Recent Threads)
+  // -------------------------------------------------------------
+  if (step === 'home') {
+    return (
+      <div className="flex flex-1 flex-col gap-3 p-3.5">
+        {/* Prominent Create New Thread CTA */}
+        <button
+          type="button"
+          onClick={() => {
+            setTitle('')
+            setDescription('')
+            setSelectedPersonIds([])
+            setStep('new_details')
+          }}
+          className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-primary-light/40 px-3.5 py-3 text-left transition-all hover:bg-primary-light hover:border-primary/50 shadow-xs cursor-pointer group"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-white shadow-xs group-hover:scale-105 transition-transform">
+              <Plus size={16} weight="bold" />
+            </div>
+            <div>
+              <p className="text-small font-bold text-ink">Create New Thread</p>
+              <p className="text-tiny text-ink-subtle">Add people and start a capture session</p>
+            </div>
+          </div>
+          <ArrowRight size={15} weight="bold" className="text-primary group-hover:translate-x-0.5 transition-transform" />
+        </button>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <MagnifyingGlass
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle"
+          />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search threads..."
+            aria-label="Search threads"
+            className="h-9 w-full rounded-xl border border-line bg-overlay pl-8.5 pr-8 text-small text-ink placeholder:text-ink-subtle transition-all focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/12"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink cursor-pointer"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
+        {/* Recent Threads List */}
+        <div className="flex flex-1 flex-col min-h-0">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-tiny font-semibold uppercase tracking-wider text-ink-subtle">
+              {searchQuery ? 'Search Results' : 'Recent Threads'}
+            </span>
+            <span className="text-tiny text-ink-subtle">
+              {filteredThreads.length} active
+            </span>
+          </div>
+
+          {threadsLoading && filteredThreads.length === 0 ? (
+            <LoadingState label="Loading threads…" className="py-8" />
+          ) : filteredThreads.length === 0 ? (
+            <EmptyState
+              title={searchQuery ? 'No matching threads' : 'No threads found'}
+              description={
+                searchQuery
+                  ? 'Try a different search term or create a new thread above.'
+                  : 'Start by clicking "+ Create New Thread" above.'
+              }
+            />
+          ) : (
+            <ul className="flex max-h-[310px] flex-col gap-1.5 overflow-y-auto scroll-slim pr-0.5">
+              {filteredThreads.map((thread) => (
+                <li key={thread.id}>
+                  <Card className="flex items-center justify-between gap-2.5 p-2.5 hover:border-primary/40 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-small font-semibold text-ink">{thread.title}</p>
+                      <p className="truncate text-tiny text-ink-muted">
+                        {thread.description || relativeTime(thread.lastInteractionAt)}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleStartExistingThreadSession(thread)}
+                      className="shrink-0 text-tiny h-7 px-2.5 gap-1 shadow-2xs"
+                    >
+                      <Lightning size={12} weight="bold" />
+                      Capture
+                    </Button>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {onOpenCompanion && (
+          <div className="mt-auto pt-2 border-t border-line/60">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenCompanion}
+              className="w-full gap-1.5 text-tiny text-ink-muted"
+            >
+              Open Companion Side Panel
+            </Button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 2: CREATE THREAD DETAILS (Title & Description)
+  // -------------------------------------------------------------
+  if (step === 'new_details') {
+    return (
+      <div className="flex flex-1 flex-col gap-3 p-3.5">
+        <div className="flex items-center gap-2 pb-1 border-b border-line">
+          <button
+            type="button"
+            onClick={() => setStep('home')}
+            className="rounded-lg p-1 text-ink-subtle hover:text-ink hover:bg-overlay cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <div>
+            <h2 className="text-small font-bold text-ink">New Thread Details</h2>
+            <p className="text-tiny text-ink-subtle">Step 1 of 2: Define the topic</p>
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col gap-3 pt-1">
+          <Field label="Thread Title" htmlFor="new-thread-title">
+            <Input
+              id="new-thread-title"
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Q4 Strategy Sync, Aditya Project"
+              className="text-small"
+            />
+          </Field>
+
+          <Field label="Description (Optional)" htmlFor="new-thread-desc">
+            <Textarea
+              id="new-thread-desc"
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Key context, meeting goals, or background notes..."
+              className="text-small resize-none"
+            />
+          </Field>
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-line">
+          <Button variant="ghost" size="sm" onClick={() => setStep('home')}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            disabled={!title.trim()}
+            onClick={() => setStep('new_people')}
+            className="gap-1.5"
+          >
+            Next: Add People
+            <ArrowRight size={13} weight="bold" />
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 3: ADD PEOPLE (Existing or Create New)
+  // -------------------------------------------------------------
+  if (step === 'new_people') {
+    return (
+      <div className="flex flex-1 flex-col gap-3 p-3.5">
+        <div className="flex items-center gap-2 pb-1 border-b border-line">
+          <button
+            type="button"
+            onClick={() => setStep('new_details')}
+            className="rounded-lg p-1 text-ink-subtle hover:text-ink hover:bg-overlay cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-small font-bold text-ink truncate">Add People to “{title}”</h2>
+            <p className="text-tiny text-ink-subtle">Step 2 of 2: Participants</p>
+          </div>
+        </div>
+
+        {/* Selected People Pills */}
+        {selectedPersonIds.length > 0 && (
+          <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto scroll-slim">
+            {selectedPersonIds.map((id) => {
+              const person = people.find((p) => p.id === id)
+              return (
+                <span
+                  key={id}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary-light px-2 py-0.5 text-tiny font-medium text-primary border border-primary/20"
+                >
+                  <Avatar name={person?.fullName || 'User'} size="xs" />
+                  <span className="truncate max-w-[120px]">{person?.fullName || 'Person'}</span>
+                  <button
+                    type="button"
+                    onClick={() => togglePersonSelect(id)}
+                    className="hover:text-danger cursor-pointer ml-0.5"
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Inline Create Person Form */}
+        {showCreatePerson ? (
+          <form
+            onSubmit={handleCreatePersonInline}
+            className="rounded-xl border border-primary/30 bg-primary-light/20 p-3 flex flex-col gap-2"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-tiny font-bold text-primary">New Person</span>
+              <button
+                type="button"
+                onClick={() => setShowCreatePerson(false)}
+                className="text-ink-subtle hover:text-ink cursor-pointer"
+              >
+                <X size={12} />
+              </button>
+            </div>
+            <Input
+              autoFocus
+              size="sm"
+              placeholder="Full Name *"
+              value={newPersonName}
+              onChange={(e) => setNewPersonName(e.target.value)}
+              className="h-8 text-tiny"
+            />
+            <div className="flex gap-2">
+              <Input
+                size="sm"
+                placeholder="Role (optional)"
+                value={newPersonRole}
+                onChange={(e) => setNewPersonRole(e.target.value)}
+                className="h-8 text-tiny flex-1"
+              />
+              <Input
+                size="sm"
+                placeholder="Company (optional)"
+                value={newPersonOrg}
+                onChange={(e) => setNewPersonOrg(e.target.value)}
+                className="h-8 text-tiny flex-1"
+              />
+            </div>
+            <Button
+              type="submit"
+              size="sm"
+              loading={creatingPerson}
+              disabled={!newPersonName.trim()}
+              className="mt-1 h-7 text-tiny"
+            >
+              Add Person
+            </Button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowCreatePerson(true)}
+            className="flex items-center gap-1.5 text-tiny font-semibold text-primary hover:underline cursor-pointer"
+          >
+            <Plus size={13} weight="bold" />
+            Create new person
+          </button>
+        )}
+
+        {/* Search Existing People */}
+        <div className="relative">
+          <MagnifyingGlass
+            size={13}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-subtle"
+          />
+          <input
+            value={personSearch}
+            onChange={(e) => setPersonSearch(e.target.value)}
+            placeholder="Search existing contacts..."
+            className="h-8 w-full rounded-lg border border-line bg-overlay pl-7.5 pr-2.5 text-tiny text-ink focus:border-primary focus:bg-card focus:outline-none"
+          />
+        </div>
+
+        {/* Existing People List */}
+        <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto scroll-slim pr-0.5">
+          {filteredPeople.map((person) => {
+            const isSelected = selectedPersonIds.includes(person.id)
+            return (
+              <li key={person.id}>
+                <button
+                  type="button"
+                  onClick={() => togglePersonSelect(person.id)}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-lg border p-2 text-left transition-colors cursor-pointer',
+                    isSelected
+                      ? 'border-primary bg-primary-light/40 text-primary-dark font-medium'
+                      : 'border-line/70 bg-card hover:bg-overlay text-ink',
+                  )}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar name={person.fullName} size="sm" />
+                    <div className="min-w-0">
+                      <p className="truncate text-tiny font-semibold">{person.fullName}</p>
+                      <p className="truncate text-[11px] text-ink-subtle">
+                        {[person.role, person.organisation].filter(Boolean).join(' · ') ||
+                          'Contact'}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className={cn(
+                      'flex size-4 shrink-0 items-center justify-center rounded-md border',
+                      isSelected
+                        ? 'border-primary bg-primary text-white'
+                        : 'border-line bg-overlay',
+                    )}
+                  >
+                    {isSelected ? <Check size={10} weight="bold" /> : null}
+                  </div>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+
+        {/* Action Footer */}
+        <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-line">
+          <Button variant="ghost" size="sm" onClick={() => setStep('new_details')}>
+            Back
+          </Button>
+          <Button
+            size="sm"
+            loading={creatingThread}
+            onClick={handleCreateAndStartSession}
+            className="gap-1.5 shadow-sm"
+          >
+            Start Capture Session
+            <Lightning size={13} weight="bold" />
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 4: LIVE CAPTURE SESSION (Notes, Decision, Question, Action)
+  // -------------------------------------------------------------
+  if (step === 'session') {
+    return (
+      <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+        {/* Active Session Status Bar */}
+        <div className="flex items-center justify-between rounded-xl border border-danger/30 bg-danger/10 px-3 py-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="relative flex size-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-75"></span>
+              <span className="relative inline-flex size-2.5 rounded-full bg-danger"></span>
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-tiny font-bold text-ink">
+                {activeThread?.title}
+              </p>
+              <p className="text-[11px] text-ink-subtle">
+                Capturing Session · {sessionCaptures.length} logged
+              </p>
+            </div>
+          </div>
+          <span className="font-mono text-tiny font-bold text-danger bg-card/80 px-2 py-0.5 rounded-md border border-danger/20">
+            {formatTimer(sessionElapsed)}
+          </span>
+        </div>
+
+        {/* Capture Input Card */}
+        <form onSubmit={handleAddCapture} className="flex flex-col gap-2 rounded-xl border border-line bg-card p-2.5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-subtle">
+              Log thought or event
+            </span>
+            <span className="text-[10px] text-ink-subtle">Press Enter to add</span>
+          </div>
+
+          <input
+            ref={captureInputRef}
+            autoFocus
+            value={captureInput}
+            onChange={(e) => setCaptureInput(e.target.value)}
+            placeholder="Type note, promise, decision, question..."
+            className="h-9 w-full rounded-lg border border-line bg-overlay px-2.5 text-small text-ink focus:border-primary focus:bg-card focus:outline-none"
+          />
+
+          {/* Type Selectors */}
+          <div className="flex items-center justify-between gap-1">
+            <div className="flex flex-wrap gap-1">
+              {CAPTURE_TYPE_OPTIONS.map((opt) => {
+                const active = captureType === opt.value
+                const Icon = opt.icon
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setCaptureType(opt.value)}
+                    className="cursor-pointer"
+                  >
+                    <Chip
+                      tone={active ? opt.tone : 'neutral'}
+                      icon={<Icon size={11} weight="bold" />}
+                      className={cn(
+                        'transition-all text-[11px] h-5.5 px-2',
+                        active && 'ring-1 ring-primary/40 font-bold shadow-xs',
+                      )}
+                    >
+                      {opt.label}
+                    </Chip>
+                  </button>
+                )
+              })}
+            </div>
+
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!captureInput.trim()}
+              className="h-6 px-2.5 text-tiny gap-1"
+            >
+              <Plus size={11} weight="bold" />
+              Add
+            </Button>
+          </div>
+        </form>
+
+        {/* Captures Logged in this Session */}
+        <div className="flex flex-1 flex-col min-h-0">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-ink-subtle uppercase tracking-wider">
+              Session Log ({sessionCaptures.length})
+            </span>
+          </div>
+
+          {sessionCaptures.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-line bg-overlay/30 p-4 text-center">
+              <p className="text-tiny text-ink-subtle">
+                Capturing is active! Add notes, actions, questions, or decisions as you discuss.
+              </p>
+            </div>
+          ) : (
+            <ul className="flex max-h-44 flex-col gap-1.5 overflow-y-auto scroll-slim pr-0.5">
+              {sessionCaptures.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-start justify-between gap-2 rounded-lg border border-line bg-card p-2 text-tiny"
+                >
+                  <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                    <Chip tone={item.type} className="text-[10px] h-5 px-1.5 shrink-0 mt-0.5">
+                      {item.type}
+                    </Chip>
+                    <span className="text-ink text-small leading-tight break-words">
+                      {item.content}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCapture(item.id)}
+                    className="text-ink-subtle hover:text-danger cursor-pointer p-0.5 shrink-0"
+                  >
+                    <Trash size={12} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Stop Capturing & Club Footer */}
+        <div className="mt-auto pt-2 border-t border-line flex flex-col gap-1.5">
+          <Button
+            variant="danger"
+            size="sm"
+            loading={stoppingSession}
+            disabled={sessionCaptures.length === 0}
+            onClick={handleStopAndClub}
+            className="w-full gap-1.5 font-bold shadow-sm"
+          >
+            ■ Stop Capturing & Club All ({sessionCaptures.length})
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResetHome}
+            disabled={stoppingSession}
+            className="w-full text-tiny text-ink-subtle"
+          >
+            Cancel Session
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 5: SESSION COMPLETED & CLUBBED RECAP
+  // -------------------------------------------------------------
+  if (step === 'summary') {
+    return (
+      <div className="flex flex-1 flex-col gap-3 p-3.5">
+        <div className="flex items-center gap-2 pb-1 border-b border-line">
+          <div className="flex size-7 items-center justify-center rounded-full bg-success/20 text-success">
+            <Check size={16} weight="bold" />
+          </div>
+          <div>
+            <h2 className="text-small font-bold text-ink">Session Clubbed & Saved</h2>
+            <p className="text-tiny text-ink-subtle">
+              Filed into “{activeThread?.title}”
+            </p>
+          </div>
+        </div>
+
+        {/* Clubbed Markdown Summary Card */}
+        <div className="flex flex-1 flex-col min-h-0 rounded-xl border border-line bg-card p-3 shadow-xs">
+          <div className="mb-2 flex items-center justify-between border-b border-line/60 pb-1.5">
+            <span className="text-tiny font-bold text-primary">Consolidated Session Recap</span>
+            <button
+              type="button"
+              onClick={handleCopySummary}
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-tiny font-semibold text-primary bg-primary-light hover:brightness-95 cursor-pointer"
+            >
+              <CopySimple size={12} />
+              {copied ? 'Copied!' : 'Copy Recap'}
+            </button>
+          </div>
+
+          <pre className="flex-1 overflow-y-auto scroll-slim whitespace-pre-wrap font-sans text-tiny text-ink leading-relaxed">
+            {clubbedSummary}
+          </pre>
+        </div>
+
+        <div className="mt-auto pt-2 border-t border-line">
+          <Button size="sm" onClick={handleResetHome} className="w-full font-bold">
+            Done / Back to Threads
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}

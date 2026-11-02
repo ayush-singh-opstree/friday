@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react'
 import {
   useAttentionStore,
   useCommitmentStore,
+  useNotificationStore,
   usePeopleStore,
   useThreadStore,
 } from '@/store'
@@ -127,5 +128,45 @@ export function useCommitments({ autoLoad = true, threadId } = {}) {
       (id, note) => useCommitmentStore.getState().completeCommitment(id, note),
       [],
     ),
+    reopen: useCallback((id) => useCommitmentStore.getState().reopenCommitment(id), []),
+  }
+}
+
+/**
+ * In-app notification inbox + unread badge (Feature 14 / Requirement 10).
+ *
+ * `poll` keeps the header bell current; the Today view can call `runTriggers()`
+ * to materialise due-soon and going-cold notifications on demand.
+ */
+export function useNotifications({ autoLoad = true, poll = false, intervalMs = 60000 } = {}) {
+  const notifications = useNotificationStore((state) => state.items)
+  const unreadCount = useNotificationStore((state) => state.unreadCount)
+  const status = useNotificationStore((state) => state.status)
+  const error = useNotificationStore((state) => state.error)
+
+  useEffect(() => {
+    if (!autoLoad) return
+    useNotificationStore.getState().fetchNotifications()
+  }, [autoLoad])
+
+  useEffect(() => {
+    if (!poll) return undefined
+    const timer = setInterval(() => {
+      useNotificationStore.getState().fetchNotifications()
+    }, intervalMs)
+    return () => clearInterval(timer)
+  }, [poll, intervalMs])
+
+  return {
+    notifications,
+    unreadCount,
+    status,
+    error,
+    isLoading: status === 'loading',
+    refresh: useCallback(() => useNotificationStore.getState().fetchNotifications(), []),
+    runTriggers: useCallback(() => useNotificationStore.getState().runTriggers(), []),
+    markRead: useCallback((id) => useNotificationStore.getState().markRead(id), []),
+    markAllRead: useCallback(() => useNotificationStore.getState().markAllRead(), []),
+    remove: useCallback((id) => useNotificationStore.getState().removeNotification(id), []),
   }
 }

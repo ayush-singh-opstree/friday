@@ -817,6 +817,56 @@ route('POST', /^\/ai\/brief\/([^/]+)$/, async ({ params }) => {
   return { summary }
 })
 
+// Deterministic stand-in for the server's Gemini classifier (mirrors the
+// fallback in backend/app/services/ai_service.py -> classify_capture).
+route('POST', /^\/ai\/classify$/, async ({ body }) => {
+  requireUser()
+  const db = getDb()
+  const raw = body?.content ?? body?.lines ?? ''
+  const content = Array.isArray(raw) ? raw.join('\n') : String(raw)
+  const lower = content.toLowerCase()
+
+  let suggestedType = 'note'
+  let confidence = 0.75
+  let reasoning = 'General observation or meeting context.'
+
+  if (
+    ['will do', 'promised to', 'follow up', 'send over', 'by tomorrow', 'deadline'].some((word) =>
+      lower.includes(word),
+    )
+  ) {
+    suggestedType = 'action'
+    confidence = 0.9
+    reasoning = 'Contains action/promise keywords.'
+  } else if (['decided', 'agreed that', 'decision', 'selected'].some((word) => lower.includes(word))) {
+    suggestedType = 'decision'
+    confidence = 0.88
+    reasoning = 'Contains decision terms.'
+  } else if (
+    content.trim().endsWith('?') ||
+    ['wonder if', 'ask whether', 'check if'].some((word) => lower.includes(word))
+  ) {
+    suggestedType = 'question'
+    confidence = 0.85
+    reasoning = 'Question or clarification format.'
+  }
+
+  const matchedThread = db.threads.find(
+    (thread) =>
+      thread.status === 'active' &&
+      thread.title &&
+      lower.includes(thread.title.toLowerCase()),
+  )
+
+  return {
+    suggestedType,
+    suggestedThreadId: matchedThread?.id ?? null,
+    confidence,
+    reasoning,
+  }
+})
+
+
 /* search ---------------------------------------------------------------- */
 
 route('GET', /^\/search$/, async ({ query }) => {
@@ -866,24 +916,205 @@ route('GET', /^\/search$/, async ({ query }) => {
 
 /* notifications --------------------------------------------------------- */
 
-route('GET', /^\/notifications\/preferences$/, async () => {
-  const user = requireUser()
-  return { preferences: user.notificationPreferences, digestTime: user.digestTime }
-})
+/** Notification record -> the camelCase view model the UI consumes. */
+function notificationVm(row) {
+  return {
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    body: row.body,
+    referenceType: row.referenceType ?? null,
+    referenceId: row.referenceId ?? null,
+    deepLinkUrl: row.deepLinkUrl ?? '',
+    scheduledAt: row.scheduledAt ?? null,
+    sentAt: row.sentAt ?? null,
+    isRead: Boolean(row.isRead),
+  }
+}
+
+/** Flat preference view model (matches the backend's /preferences contract). */
+function preferenceVm(user) {
+  const prefs = user?.notificationPreferences ?? {}
+  return {
+    dailyDigest: prefs.dailyDigest ?? true,
+    commitmentDue: prefs.commitmentDue ?? true,
+    goingCold: prefs.goingCold ?? true,
+    preMeetingBrief: prefs.preMeetingBrief ?? true,
+    reengagementDigest: prefs.reengagementDigest ?? true,
+    digestTime: user?.digestTime ?? '08:00',
+    digestEnabled: user?.digestEnabled ?? true,
+    emailDigestEnabled: user?.emailDigestEnabled ?? false,
+  }
+}
+
+route('GET', /^\/notifications\/preferences$/, async () => preferenceVm(requireUser()))
 
 route('PATCH', /^\/notifications\/preferences$/, async ({ body }) => {
   const user = requireUser()
-  if (body?.notificationPreferences) {
-    user.notificationPreferences = {
-      ...user.notificationPreferences,
-      ...body.notificationPreferences,
+  const prefs = { ...(user.notificationPreferences ?? {}) }
+  const keyMap = {
+    daily_digest: 'dailyDigest',
+    commitment_due: 'commitmentDue',
+    going_cold: 'goingCold',
+    pre_meeting_brief: 'preMeetingBrief',
+    reengagement_digest: 'reengagementDigest',
+  }
+  for (const [snake, camel] of Object.entries(keyMap)) {
+    if (body?.[snake] !== undefined) prefs[camel] = Boolean(body[snake])
+  }
+  user.notificationPreferences = prefs
+  if (body?.digest_time) user.digestTime = body.digest_time
+  if (body?.digest_enabled !== undefined) user.digestEnabled = Boolean(body.digest_enabled)
+  if (body?.email_digest_enabled !== undefined) {
+    user.emailDigestEnabled = Boolean(body.email_digest_enabled)
+  }
+  saveDb()
+  return preferenceVm(user)
+})
+
+route('POST', /^\/notifications\/read-all$/, async () => {
+  requireUser()
+  const db = getDb()
+  let markedReadCount = 0
+  for (const row of db.notifications) {
+    if (!row.isRead) {
+      row.isRead = true
+      markedReadCount += 1
     }
   }
-  if (body?.digestTime) user.digestTime = body.digestTime
-  if (body?.emailDigestEnabled !== undefined) user.emailDigestEnabled = body.emailDigestEnabled
   saveDb()
-  return { preferences: user.notificationPreferences, digestTime: user.digestTime }
+  return { status: 'ok', markedReadCount }
 })
+
+route('POST', /^\/notifications\/check-triggers$/, async () => {
+  requireUser()
+  const db = getDb()
+  const now = Date.now()
+  const generated = []
+
+  // 1. Commitments due within the next 24h (Feature 14 -> Commitment Due).
+  for (const commitment of db.commitments) {
+    if (commitment.status !== 'open' || !commitment.dueDate) continue
+    const due = new Date(commitment.dueDate).getTime()
+    if (due <= now || due > now + 24 * 60 * 60 * 1000) continue
+    const exists = db.notifications.some(
+      (row) => row.type === 'commitment_due' && row.referenceId === commitment.id,
+    )
+    if (exists) continue
+
+    const thread = db.threads.find((row) => row.id === commitment.threadId)
+    const hoursLeft = Math.max(1, Math.round((due - now) / (60 * 60 * 1000)))
+    const record = {
+      id: uid('ntf'),
+      type: 'commitment_due',
+      title: `Commitment due in ~${hoursLeft}h: ${commitment.description.slice(0, 40)}`,
+      body: `From thread '${thread?.title ?? '—'}'.`,
+      referenceType: 'commitment',
+      referenceId: commitment.id,
+      deepLinkUrl: `/threads/${commitment.threadId}?tab=commitments`,
+      scheduledAt: nowIso(),
+      sentAt: nowIso(),
+      isRead: false,
+    }
+    db.notifications.push(record)
+    generated.push(record)
+  }
+
+  // 2. Threads past their going-cold threshold (Feature 14 -> Going Cold).
+  for (const thread of db.threads) {
+    if (thread.status !== 'active' || !isGoingCold(thread)) continue
+    const exists = db.notifications.some(
+      (row) => row.type === 'going_cold' && row.referenceId === thread.id,
+    )
+    if (exists) continue
+
+    const last = new Date(thread.lastInteractionAt ?? thread.createdAt).getTime()
+    const daysSince = Math.max(0, Math.floor((now - last) / (24 * 60 * 60 * 1000)))
+    const record = {
+      id: uid('ntf'),
+      type: 'going_cold',
+      title: `Going Cold: ${thread.title}`,
+      body: `No interaction for ${daysSince} days (threshold: ${thread.goingColdThresholdDays ?? 14} days).`,
+      referenceType: 'thread',
+      referenceId: thread.id,
+      deepLinkUrl: `/threads/${thread.id}`,
+      scheduledAt: nowIso(),
+      sentAt: nowIso(),
+      isRead: false,
+    }
+    db.notifications.push(record)
+    generated.push(record)
+  }
+
+  saveDb()
+  return { status: 'ok', generatedCount: generated.length, items: generated.map(notificationVm) }
+})
+
+route('GET', /^\/notifications$/, async ({ query }) => {
+  requireUser()
+  const db = getDb()
+  let rows = [...db.notifications]
+
+  if (query?.isRead !== undefined && query.isRead !== '') {
+    const want = String(query.isRead) === 'true'
+    rows = rows.filter((row) => Boolean(row.isRead) === want)
+  }
+  if (query?.type) rows = rows.filter((row) => row.type === query.type)
+
+  rows.sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt))
+
+  const limit = Number(query?.limit ?? 50)
+  const offset = Number(query?.offset ?? 0)
+  return {
+    items: rows.slice(offset, offset + limit).map(notificationVm),
+    total: rows.length,
+    unreadCount: db.notifications.filter((row) => !row.isRead).length,
+  }
+})
+
+route('POST', /^\/notifications$/, async ({ body }) => {
+  requireUser()
+  const db = getDb()
+  const record = {
+    id: uid('ntf'),
+    type: body?.type ?? 'daily_digest',
+    title: body?.title ?? 'Notification',
+    body: body?.body ?? '',
+    referenceType: body?.referenceType ?? body?.reference_type ?? null,
+    referenceId: body?.referenceId ?? body?.reference_id ?? null,
+    deepLinkUrl: body?.deepLinkUrl ?? body?.deep_link_url ?? '',
+    scheduledAt: body?.scheduledAt ?? nowIso(),
+    sentAt: nowIso(),
+    isRead: false,
+  }
+  db.notifications.push(record)
+  saveDb()
+  return notificationVm(record)
+})
+
+route('PATCH', /^\/notifications\/([^/]+)\/read$/, async ({ params }) => {
+  requireUser()
+  const db = getDb()
+  const record = db.notifications.find((row) => row.id === params[0])
+  if (!record) {
+    throw new ApiError('Notification not found.', { status: 404, code: 'not_found' })
+  }
+  record.isRead = true
+  saveDb()
+  return notificationVm(record)
+})
+
+route('DELETE', /^\/notifications\/([^/]+)$/, async ({ params }) => {
+  requireUser()
+  const db = getDb()
+  const index = db.notifications.findIndex((row) => row.id === params[0])
+  if (index >= 0) {
+    db.notifications.splice(index, 1)
+    saveDb()
+  }
+  return null
+})
+
 
 /* ----------------------------------------------------------------- router */
 

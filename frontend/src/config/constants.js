@@ -104,6 +104,28 @@ export const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
   reengagementDigest: true,
 })
 
+/**
+ * In-app notification categories (Feature 14 -> In-App Notification Types).
+ * `key` matches the entry in `notificationPreferences` that gates the type, so
+ * the notification panel and Settings -> Notifications stay in lock-step.
+ */
+export const NOTIFICATION_TYPES = Object.freeze([
+  { value: 'daily_digest', key: 'dailyDigest', label: 'Daily digest', icon: 'Sun' },
+  { value: 'commitment_due', key: 'commitmentDue', label: 'Commitment due', icon: 'CheckSquare' },
+  { value: 'going_cold', key: 'goingCold', label: 'Going cold', icon: 'Snowflake' },
+  { value: 'pre_meeting_brief', key: 'preMeetingBrief', label: 'Pre-meeting brief', icon: 'Sparkle' },
+  {
+    value: 'reengagement_digest',
+    key: 'reengagementDigest',
+    label: 'Re-engagement',
+    icon: 'ChatCircleDots',
+  },
+])
+
+export const NOTIFICATION_TYPE_MAP = Object.freeze(
+  Object.fromEntries(NOTIFICATION_TYPES.map((type) => [type.value, type])),
+)
+
 /** Default user preferences. */
 export const DEFAULT_SETTINGS = Object.freeze({
   theme: 'system',

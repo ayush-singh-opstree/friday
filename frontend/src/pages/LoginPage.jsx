@@ -1,11 +1,11 @@
 import { useCallback, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowRight, Key, Sparkle } from '@/components/icons'
+import { ArrowRight, Sparkle } from '@/components/icons'
 import { useAuth } from '@/auth'
 import { Logo } from '@/components/common/Brand'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Controls'
-import { env, dataSource } from '@/config/env'
+import { env } from '@/config/env'
 import { motion } from 'motion/react'
 
 /**
@@ -121,11 +121,6 @@ export function LoginPage() {
             </div>
           ) : null}
         </div>
-
-        <p className="mt-5 flex items-center justify-center gap-1.5 text-tiny text-ink-subtle">
-          <Key size={12} />
-          {dataSource.label}
-        </p>
       </motion.div>
     </div>
   )

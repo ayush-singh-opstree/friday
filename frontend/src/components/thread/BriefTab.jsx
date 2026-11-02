@@ -171,7 +171,9 @@ function BriefCard({
         </div>
       ) : content ? (
         <div className="flex flex-col gap-3">
-          <p className="text-body text-ink">{content.lastContactSummary}</p>
+          {content.lastContactSummary ? (
+            <p className="text-body text-ink">{content.lastContactSummary}</p>
+          ) : null}
 
           {content.keyTopics?.length ? (
             <Section label="Key topics">

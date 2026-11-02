@@ -12,17 +12,34 @@ export const Dialog = DialogPrimitive.Root
 export const DialogTrigger = DialogPrimitive.Trigger
 export const DialogClose = DialogPrimitive.Close
 
-export function DialogContent({ className, children, showHandle = true, ...props }) {
+export function DialogContent({
+  className,
+  children,
+  showHandle = true,
+  onPointerDownOutside,
+  ...props
+}) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-90 bg-black/50 backdrop-blur-sm data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out" />
       <DialogPrimitive.Content
+        onPointerDownOutside={(event) => {
+          if (
+            event.target.closest?.('.react-datepicker') ||
+            event.target.closest?.('.react-datepicker-popper') ||
+            event.target.closest?.('.tw-datepicker-popper')
+          ) {
+            event.preventDefault()
+            return
+          }
+          onPointerDownOutside?.(event)
+        }}
         className={cn(
-          'fixed z-95 flex flex-col overflow-y-auto bg-card shadow-xl outline-none',
+          'fixed z-95 flex flex-col overflow-y-auto bg-card shadow-xl outline-none scroll-slim',
           'border border-line/60',
           'inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl p-5',
-          'sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[85vh]',
-          'sm:w-[min(480px,94vw)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl',
+          'sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[min(88vh,800px)]',
+          'sm:w-[min(520px,94vw)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl',
           'data-[state=open]:animate-dialog-in data-[state=closed]:animate-dialog-out',
           className,
         )}
@@ -44,7 +61,7 @@ export function DialogContent({ className, children, showHandle = true, ...props
 }
 
 export function DialogHeader({ className, children }) {
-  return <div className={cn('mb-4 flex flex-col gap-1 pr-8', className)}>{children}</div>
+  return <div className={cn('mb-3 flex flex-col gap-1 pr-8', className)}>{children}</div>
 }
 
 export function DialogTitle({ className, children, ...props }) {
@@ -73,7 +90,7 @@ export function DialogFooter({ className, children }) {
   return (
     <div
       className={cn(
-        'mt-5 flex items-center justify-end gap-2 border-t border-line pt-4',
+        'mt-3 flex items-center justify-end gap-2 border-t border-line pt-3.5',
         className,
       )}
     >

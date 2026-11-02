@@ -13,6 +13,8 @@ export { SyncBadge } from './SyncBadge'
 export { Avatar, AvatarGroup } from './Avatar'
 export { Field, Input, Textarea, Select, Switch, SwitchRow } from './Controls'
 export { SelectMenu } from './SelectMenu'
+export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor, PopoverClose } from './Popover'
+export { DatePicker } from './DatePicker'
 export {
   Spinner,
   Skeleton,

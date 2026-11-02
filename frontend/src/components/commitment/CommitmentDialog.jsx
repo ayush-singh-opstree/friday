@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { endOfTodayIso, fromDateInputValue, toDateInputValue } from '@/lib/date'
+import { endOfDayIso, toDate } from '@/lib/date'
 import { useCommitmentStore, useThreadStore, useUiStore } from '@/store'
 import { Button } from '@/components/ui/Button'
 import {
@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/Dialog'
 import { Field, Input } from '@/components/ui/Controls'
+import { DatePicker } from '@/components/ui/DatePicker'
 import { SelectMenu } from '@/components/ui/SelectMenu'
 
 /**
@@ -24,7 +25,7 @@ export function CommitmentDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined}>
+      <DialogContent aria-describedby={undefined} className="sm:overflow-visible">
         <DialogHeader>
           <DialogTitle>{commitment ? 'Edit commitment' : 'New commitment'}</DialogTitle>
         </DialogHeader>
@@ -58,7 +59,7 @@ function CommitmentForm({
   const [description, setDescription] = useState(commitment?.description ?? '')
   const [ownerType, setOwnerType] = useState(commitment?.ownerType ?? 'me')
   const [ownerPersonId, setOwnerPersonId] = useState(commitment?.ownerPersonId ?? '')
-  const [dueDate, setDueDate] = useState(toDateInputValue(commitment?.dueDate))
+  const [dueDate, setDueDate] = useState(() => toDate(commitment?.dueDate))
   const [targetThreadId, setTargetThreadId] = useState(commitment?.threadId ?? threadId ?? '')
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -102,7 +103,7 @@ function CommitmentForm({
       threadId: targetThreadId,
       ownerType,
       ownerPersonId: ownerType === 'person' ? ownerPersonId || null : null,
-      dueDate: dueDate ? fromDateInputValue(dueDate) : null,
+      dueDate: dueDate ? endOfDayIso(dueDate) : null,
     }
 
     setSaving(true)
@@ -120,7 +121,7 @@ function CommitmentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       <Field label="What was promised?" htmlFor="commitment-description" error={error}>
         <Input
           id="commitment-description"
@@ -153,11 +154,11 @@ function CommitmentForm({
         </Field>
 
         <Field label="Due date" htmlFor="commitment-due">
-          <Input
+          <DatePicker
             id="commitment-due"
-            type="date"
             value={dueDate}
-            onChange={(event) => setDueDate(event.target.value)}
+            onChange={setDueDate}
+            aria-label="Due date"
           />
         </Field>
       </div>
@@ -172,20 +173,6 @@ function CommitmentForm({
           />
         </Field>
       ) : null}
-
-      <div className="flex items-center gap-1.5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setDueDate(toDateInputValue(endOfTodayIso()))}
-        >
-          Due today
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setDueDate('')}>
-          Clear date
-        </Button>
-      </div>
 
       <DialogFooter>
         <Button variant="ghost" onClick={() => onOpenChange(false)}>

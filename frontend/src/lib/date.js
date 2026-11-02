@@ -90,11 +90,19 @@ export function toDateInputValue(value) {
 
 /** Interpret an <input type="date"> value as end of that local day. */
 export function fromDateInputValue(value) {
-  if (!value) return null
-  const date = parseISO(value)
-  if (!isValid(date)) return null
-  date.setHours(17, 0, 0, 0)
-  return date.toISOString()
+  return endOfDayIso(value)
+}
+
+/**
+ * ISO timestamp for 17:00 local on the given day - the app's default due time,
+ * so a commitment due "today" is due end of the working day.
+ */
+export function endOfDayIso(value) {
+  const date = toDate(value)
+  if (!date) return null
+  const end = new Date(date)
+  end.setHours(17, 0, 0, 0)
+  return end.toISOString()
 }
 
 export function isToday(value) {
@@ -117,6 +125,21 @@ export function commitmentUrgency(dueDate, status = 'open') {
   if (days < 0) return URGENCY.OVERDUE
   if (days <= 2) return URGENCY.SOON
   return URGENCY.OK
+}
+
+/**
+ * Presentation metadata for a commitment row: one status chip that answers
+ * "what state is this in?" plus the tone to render it with. Ordered by
+ * importance so the most urgent signal wins.
+ *
+ * @returns {{ key: 'completed'|'overdue'|'soon'|'open', label: string, tone: string }}
+ */
+export function commitmentStatusMeta(dueDate, status = 'open') {
+  if (status === 'completed') return { key: 'completed', label: 'Completed', tone: 'success' }
+  const urgency = commitmentUrgency(dueDate, status)
+  if (urgency === URGENCY.OVERDUE) return { key: 'overdue', label: 'Overdue', tone: 'danger' }
+  if (urgency === URGENCY.SOON) return { key: 'soon', label: 'Due soon', tone: 'warning' }
+  return { key: 'open', label: 'Open', tone: 'neutral' }
 }
 
 /** Human phrasing for commitment rows: "Overdue by 2 days", "Due tomorrow". */

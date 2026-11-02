@@ -19,10 +19,13 @@ import {
   Bell as LucideBell,
   Bot as LucideBot,
   Brain as LucideBrain,
+  CalendarDays as LucideCalendarDays,
   Briefcase as LucideBriefcase,
   Building2 as LucideBuilding2,
   Calendar as LucideCalendar,
   ChevronDown as LucideChevronDown,
+  ChevronLeft as LucideChevronLeft,
+  ChevronRight as LucideChevronRight,
   Clock as LucideClock,
   Check as LucideCheck,
   ChevronsLeft as LucideChevronsLeft,
@@ -106,11 +109,14 @@ export const ArrowRight = icon(LucideArrowRight, 'ArrowRight')
 export const ArrowUp = icon(LucideArrowUp, 'ArrowUp')
 export const Bell = icon(LucideBell, 'Bell')
 export const Brain = icon(LucideBrain, 'Brain')
+export const CalendarDays = icon(LucideCalendarDays, 'CalendarDays')
 export const Briefcase = icon(LucideBriefcase, 'Briefcase')
 export const Buildings = icon(LucideBuilding2, 'Buildings')
 export const Calendar = icon(LucideCalendar, 'Calendar')
 export const CalendarBlank = icon(LucideCalendar, 'CalendarBlank')
 export const CaretDown = icon(LucideChevronDown, 'CaretDown')
+export const CaretLeft = icon(LucideChevronLeft, 'CaretLeft')
+export const CaretRight = icon(LucideChevronRight, 'CaretRight')
 export const Clock = icon(LucideClock, 'Clock')
 export const CaretDoubleLeft = icon(LucideChevronsLeft, 'CaretDoubleLeft')
 export const CaretDoubleRight = icon(LucideChevronsRight, 'CaretDoubleRight')

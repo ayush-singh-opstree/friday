@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Sparkle, X } from '@/components/icons'
-import { CAPTURE_MAX_LENGTH, CAPTURE_TYPES } from '@/config/constants'
+import { aiApi } from '@/apis'
+import { CAPTURE_MAX_LENGTH, CAPTURE_TYPES, CAPTURE_TYPE_MAP } from '@/config/constants'
 import { inferCaptureType, looksLikeCommitment, parseDueDate } from '@/lib/patterns'
 import { useCaptureStore, useThreadStore, useUiStore } from '@/store'
 import { Button } from '@/components/ui/Button'
@@ -35,6 +36,7 @@ function QuickCaptureForm({ initialThreadId }) {
   const [type, setType] = useState('note')
   const [threadId, setThreadId] = useState(initialThreadId ?? null)
   const [error, setError] = useState(null)
+  const [aiHint, setAiHint] = useState(null)
   const inputRef = useRef(null)
 
   const reset = useCallback(() => {
@@ -71,6 +73,32 @@ function QuickCaptureForm({ initialThreadId }) {
         : null,
     [content],
   )
+
+  // Server-side AI classification (POST /ai/classify). Debounced so typing stays
+  // snappy, and strictly optional: if the model/endpoint is unavailable the local
+  // heuristic `suggestion` above still drives the flow. The hint is stored
+  // alongside the text it was computed for, so a stale result never renders
+  // against newer input (and no state is set synchronously in the effect body).
+  useEffect(() => {
+    const text = content.trim()
+    if (text.length < 8) return undefined
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      try {
+        const result = await aiApi.classify(text)
+        if (!cancelled) setAiHint({ text, data: result })
+      } catch {
+        if (!cancelled) setAiHint({ text, data: null })
+      }
+    }, 600)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [content])
+
+  const aiSuggestion =
+    aiHint && aiHint.text === content.trim() && content.trim().length >= 8 ? aiHint.data : null
 
   const overLimit = content.length > CAPTURE_MAX_LENGTH
 
@@ -187,6 +215,41 @@ function QuickCaptureForm({ initialThreadId }) {
                 Track as action
               </button>
             </p>
+          </div>
+        ) : null}
+
+        {/* AI suggestion (POST /ai/classify) - accepts type + thread in one tap */}
+        {aiSuggestion && aiSuggestion.suggestedType && aiSuggestion.suggestedType !== type ? (
+          <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-line bg-overlay px-3.5 py-3">
+            <Sparkle size={15} weight="fill" className="mt-0.5 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1">
+              <p className="text-small text-ink">
+                AI suggests a{' '}
+                <span className="font-semibold">
+                  {CAPTURE_TYPE_MAP[aiSuggestion.suggestedType]?.label ??
+                    aiSuggestion.suggestedType}
+                </span>
+                {aiSuggestion.suggestedThreadId
+                  ? ` filed into “${
+                      threads.find((thread) => thread.id === aiSuggestion.suggestedThreadId)
+                        ?.title ?? 'a thread'
+                    }”`
+                  : ''}
+                {typeof aiSuggestion.confidence === 'number'
+                  ? ` · ${Math.round(aiSuggestion.confidence * 100)}% confidence`
+                  : ''}
+              </p>
+              <button
+                type="button"
+                className="mt-1 text-small font-semibold text-primary underline underline-offset-2"
+                onClick={() => {
+                  setType(aiSuggestion.suggestedType)
+                  if (aiSuggestion.suggestedThreadId) setThreadId(aiSuggestion.suggestedThreadId)
+                }}
+              >
+                Apply suggestion
+              </button>
+            </div>
           </div>
         ) : null}
 

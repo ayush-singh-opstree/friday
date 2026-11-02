@@ -1,5 +1,35 @@
 import { clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { extendTailwindMerge } from 'tailwind-merge'
+
+/**
+ * tailwind-merge only knows Tailwind's default scale. Our `@theme` type scale
+ * (`text-small`, `text-tiny`, `text-heading-2`, ...) was therefore classified as
+ * a text *colour*, so a real colour utility (`text-ink-inverse` on a Button) was
+ * silently dropped whenever a size class followed it in the same `cn()` call -
+ * which is why primary buttons inherited the body colour instead of staying
+ * white. Registering the scale keeps font-size and text-colour distinct.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [
+        {
+          text: [
+            'display',
+            'heading-1',
+            'heading-2',
+            'heading-3',
+            'body',
+            'body-medium',
+            'small',
+            'tiny',
+            'mono',
+          ],
+        },
+      ],
+    },
+  },
+})
 
 /** Conditional + conflict-free class names. */
 export function cn(...inputs) {

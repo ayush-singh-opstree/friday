@@ -3,6 +3,7 @@ import { Plus } from '@/components/icons'
 import { CommitmentDialog } from '@/components/commitment/CommitmentDialog'
 import { CommitmentRow } from '@/components/commitment/CommitmentRow'
 import { Button } from '@/components/ui/Button'
+import { CountBadge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/Feedback'
 import { useCommitmentStore, useUiStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -85,45 +86,35 @@ export function ThreadCommitmentsTab({ thread, commitments = [], people = [], on
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <section>
-            <h3 className="mb-1 text-tiny font-semibold tracking-[0.08em] text-ink-subtle uppercase">
-              Open · {open.length}
-            </h3>
-            {open.length === 0 ? (
-              <p className="py-2 text-small text-ink-subtle">Nothing outstanding. Nice.</p>
-            ) : (
-              <div className="rounded-md border border-line bg-card p-1">
-                {open.map((commitment) => (
-                  <CommitmentRow
-                    key={commitment.id}
-                    commitment={commitment}
-                    showThread={false}
-                    onComplete={handleComplete}
-                  />
-                ))}
-              </div>
+          <CommitmentGroup
+            label="Open"
+            accent="bg-primary"
+            rows={open}
+            emptyText="Nothing outstanding. Nice."
+            renderRow={(commitment) => (
+              <CommitmentRow
+                key={commitment.id}
+                commitment={commitment}
+                showThread={false}
+                onComplete={handleComplete}
+              />
             )}
-          </section>
+          />
 
           {closed.length > 0 ? (
-            <section>
-              <h3 className="mb-1 text-tiny font-semibold tracking-[0.08em] text-ink-subtle uppercase">
-                Completed · {closed.length}
-              </h3>
-              <div className="rounded-md border border-line bg-card p-1">
-                {closed.map((commitment) => (
-                  <button
-                    key={commitment.id}
-                    type="button"
-                    onClick={() => handleReopen(commitment)}
-                    className="w-full text-left"
-                    title="Reopen this commitment"
-                  >
-                    <CommitmentRow commitment={commitment} showThread={false} />
-                  </button>
-                ))}
-              </div>
-            </section>
+            <CommitmentGroup
+              label="Completed"
+              accent="bg-success"
+              rows={closed}
+              renderRow={(commitment) => (
+                <CommitmentRow
+                  key={commitment.id}
+                  commitment={commitment}
+                  showThread={false}
+                  onReopen={handleReopen}
+                />
+              )}
+            />
           ) : null}
         </div>
       )}
@@ -135,5 +126,26 @@ export function ThreadCommitmentsTab({ thread, commitments = [], people = [], on
         people={people}
       />
     </div>
+  )
+}
+
+/**
+ * Consistent group card used for both the open and completed buckets, so the
+ * thread tab reads exactly like the global Commitments page.
+ */
+function CommitmentGroup({ label, accent, rows, emptyText, renderRow }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
+      <header className="flex items-center gap-2 border-b border-line/70 bg-overlay/40 px-4 py-2.5">
+        <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', accent)} />
+        <h3 className="text-small font-semibold text-ink">{label}</h3>
+        <CountBadge value={rows.length} />
+      </header>
+      {rows.length === 0 ? (
+        <p className="px-4 py-3 text-small text-ink-subtle">{emptyText}</p>
+      ) : (
+        <div className="divide-y divide-line/60">{rows.map(renderRow)}</div>
+      )}
+    </section>
   )
 }

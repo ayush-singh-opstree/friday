@@ -255,7 +255,7 @@ export function TodayPage() {
                 </div>
 
                 {overdue.length > 0 || dueToday.length > 0 ? (
-                  <div className="space-y-1">
+                  <div className="divide-y divide-line/60 overflow-hidden rounded-xl border border-line/70 bg-card">
                     {[...overdue, ...dueToday].slice(0, 6).map((commitment) => (
                       <CommitmentRow
                         key={commitment.id}

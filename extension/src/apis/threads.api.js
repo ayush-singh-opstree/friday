@@ -12,8 +12,28 @@ import {
   toThread,
   toThreadCreatePayload,
   toThreadUpdatePayload,
+  toThreadPeople,
   toTimelineEvent,
 } from './adapters'
+
+/**
+ * Thread <-> person associations live on their own resource and are not part of
+ * the backend's ThreadResponse, so they are attached here. Without this the
+ * thread cards and the `personId` filter see no people at all.
+ */
+async function attachPeople(threads, { max = 60 } = {}) {
+  if (!Array.isArray(threads) || threads.length === 0) return threads ?? []
+
+  // Capped so a large workspace can never fan out into hundreds of requests.
+  const targets = threads.slice(0, max)
+  const linkSets = await Promise.all(
+    targets.map((thread) => http.get(ENDPOINTS.threads.people(thread.id)).catch(() => [])),
+  )
+  targets.forEach((thread, index) => {
+    thread.people = toThreadPeople(linkSets[index])
+  })
+  return threads
+}
 
 /**
  * Thread API. Supports the filters and sort orders from Requirement 1
@@ -31,10 +51,10 @@ export const threadsApi = {
     if (env.useMockApi) return http.get(ENDPOINTS.threads.list(), { query: params })
 
     const payload = await http.get(ENDPOINTS.threads.list(), { query: threadListParams(params) })
-    const threads = applyThreadQuery(
-      applyThreadFilter(toList(payload).rows.map(toThread), params.filter),
-      params,
-    )
+    // People are attached before filtering: the cards render them and the
+    // `personId` filter matches against them.
+    const withPeople = await attachPeople(toList(payload).rows.map(toThread))
+    const threads = applyThreadQuery(applyThreadFilter(withPeople, params.filter), params)
     return {
       threads,
       total: threads.length,
@@ -47,12 +67,14 @@ export const threadsApi = {
   detail: async (threadId) => {
     if (env.useMockApi) return http.get(ENDPOINTS.threads.detail(threadId))
 
-    const [threadDto, capturesPayload, commitmentsPayload, timelinePayload] = await Promise.all([
-      http.get(ENDPOINTS.threads.detail(threadId)),
-      http.get(ENDPOINTS.captures.list(), { query: { thread_id: threadId, limit: 200 } }),
-      http.get(ENDPOINTS.commitments.list(), { query: { thread_id: threadId, limit: 200 } }),
-      http.get(ENDPOINTS.threads.timeline(threadId), { query: { limit: 200 } }),
-    ])
+    const [threadDto, capturesPayload, commitmentsPayload, timelinePayload, peopleLinks] =
+      await Promise.all([
+        http.get(ENDPOINTS.threads.detail(threadId)),
+        http.get(ENDPOINTS.captures.list(), { query: { thread_id: threadId, limit: 200 } }),
+        http.get(ENDPOINTS.commitments.list(), { query: { thread_id: threadId, limit: 200 } }),
+        http.get(ENDPOINTS.threads.timeline(threadId), { query: { limit: 200 } }),
+        http.get(ENDPOINTS.threads.people(threadId)).catch(() => []),
+      ])
 
     const thread = toThread(threadDto)
     const captures = toList(capturesPayload).rows.map(toCapture)
@@ -60,7 +82,10 @@ export const threadsApi = {
       toCommitment(row, thread?.title ?? null),
     )
     const timeline = (Array.isArray(timelinePayload) ? timelinePayload : []).map(toTimelineEvent)
-    if (thread) thread.openCommitmentCount = commitments.filter((row) => row.status === 'open').length
+    if (thread) {
+      thread.people = toThreadPeople(peopleLinks)
+      thread.openCommitmentCount = commitments.filter((row) => row.status === 'open').length
+    }
     return { thread, captures, commitments, timeline, summaries: [] }
   },
 

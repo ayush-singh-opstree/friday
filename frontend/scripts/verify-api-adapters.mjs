@@ -17,7 +17,10 @@ import {
   toCommitment,
   toList,
   toPerson,
+  toSummary,
+  toSummaryContent,
   toThread,
+  toThreadPeople,
   toTodayPayload,
 } from '@/apis/adapters'
 
@@ -186,12 +189,93 @@ function fixtureChecks() {
     'derivePeopleStats counts only open commitments',
     stats.get('p1')?.openCommitmentCount === 2 && stats.get('p2')?.openCommitmentCount === 0,
   )
+
+  // Regression guard: a thread's people used to be dropped entirely in live mode.
+  const threadPeople = toThreadPeople([
+    {
+      thread_id: 't1',
+      person_id: 'p1',
+      person: {
+        id: 'p1',
+        user_id: 'u1',
+        full_name: 'Meera Krishnamurthy',
+        organisation: 'Acme',
+        role: 'PM',
+        created_at: 'x',
+        updated_at: 'x',
+      },
+    },
+    { thread_id: 't1', person_id: 'p2', person: null },
+  ])
+  check(
+    'toThreadPeople maps links and skips malformed ones',
+    threadPeople.length === 1 &&
+      threadPeople[0].fullName === 'Meera Krishnamurthy' &&
+      threadPeople[0].organisation === 'Acme',
+  )
+
+  // Regression guard: the Brief tab reads camelCase, the backend stores
+  // snake_case. Unmapped keys made the card render with an empty body.
+  const summary = toSummary({
+    id: 's1',
+    thread_id: 't1',
+    user_id: 'u1',
+    type: 'where_we_left_off',
+    content: {
+      last_contact_date: '2026-01-01',
+      last_contact_summary: 'Aditya approved Option B.',
+      key_topics: ['payments flow'],
+      open_commitments: ['Send timeline'],
+      next_steps: ['Book review'],
+    },
+    source_captures: ['c1'],
+    generated_at: '2026-01-02T00:00:00Z',
+    is_stale: false,
+  })
+  check('toSummary maps thread/type/sources', summary.threadId === 't1' && summary.sourceCaptures.length === 1)
+  check(
+    'toSummary translates snake_case content keys',
+    summary.content.lastContactSummary === 'Aditya approved Option B.' &&
+      summary.content.keyTopics[0] === 'payments flow' &&
+      summary.content.openCommitments[0] === 'Send timeline' &&
+      summary.content.nextSteps[0] === 'Book review',
+    JSON.stringify(summary.content),
+  )
+
+  const briefContent = toSummaryContent({
+    last_contact_summary: 'Recap',
+    talking_points: ['Confirm budget'],
+  })
+  check(
+    'toSummaryContent maps talking_points and defaults missing lists',
+    briefContent.talkingPoints[0] === 'Confirm budget' && Array.isArray(briefContent.nextSteps),
+  )
+
+  const passthrough = toSummaryContent({ lastContactSummary: 'Already camelCase', keyTopics: ['a'] })
+  check(
+    'toSummaryContent passes camelCase through',
+    passthrough.lastContactSummary === 'Already camelCase' && passthrough.keyTopics.length === 1,
+  )
+  check(
+    'toSummaryContent never returns undefined for a list',
+    Array.isArray(toSummaryContent(undefined).keyTopics),
+  )
 }
 
 /* ----------------------------------------------------------------- live --- */
 
 async function get(path) {
   const response = await fetch(`${BASE}${path}`)
+  if (!response.ok) throw new Error(`${path} -> HTTP ${response.status}`)
+  return response.json()
+}
+
+async function post(path, body) {
+  const response = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
   if (!response.ok) throw new Error(`${path} -> HTTP ${response.status}`)
   return response.json()
 }
@@ -230,6 +314,27 @@ async function liveChecks() {
   const timeline = await get(`/threads/${threads[0]?.id}/timeline`)
   check('/threads/:id/timeline is a list', Array.isArray(timeline), `${timeline?.length ?? 0} events`)
 
+  // Regression guard: the Brief tab rendered an empty body because the backend's
+  // snake_case `content` keys were never translated to the camelCase the UI reads.
+  const summarised = toSummary(
+    (await post(`/ai/summarise/${threads[0]?.id}`, { force_refresh: true }))?.summary,
+  )
+  check(
+    '/ai/summarise -> content translated + populated',
+    typeof summarised?.content?.lastContactSummary === 'string' &&
+      summarised.content.lastContactSummary.length > 0 &&
+      Array.isArray(summarised.content.keyTopics) &&
+      summarised.content.keyTopics.length > 0,
+    JSON.stringify(summarised?.content ?? null),
+  )
+
+  const brief = toSummary((await post(`/ai/brief/${threads[0]?.id}`))?.brief)
+  check(
+    '/ai/brief -> talking points resolve',
+    Array.isArray(brief?.content?.talkingPoints) && brief.content.talkingPoints.length > 0,
+    JSON.stringify(brief?.content ?? null),
+  )
+
   const todayPayload = toTodayPayload(await get('/attention/today'), {})
   check(
     '/attention/today -> TodayPayload',
@@ -253,6 +358,14 @@ async function liveChecks() {
     'directory counts resolve from live links',
     enriched.some((person) => (person.threadCount ?? 0) > 0),
     enriched.map((person) => `${person.fullName}:${person.threadCount ?? 0}`).join(', '),
+  )
+
+  // Regression guard: every thread's People tab must resolve (was always empty).
+  const threadPeople = threadRows.map((thread, index) => toThreadPeople(linkSets[index]))
+  check(
+    'thread -> people resolve from live links',
+    threadPeople.every((entry) => entry.length > 0),
+    threadRows.map((thread, index) => `${thread.title}:${threadPeople[index].length}`).join(', '),
   )
 }
 

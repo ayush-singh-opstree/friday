@@ -11,7 +11,7 @@
  */
 
 const COMMITMENT_PATTERN =
-  /\b(i'?ll|i will|we'?ll|we will|you'?ll|they'?ll|send|share|email|follow[- ]?up|circle back|schedule|book|prepare|draft|review|get back|due|by (mon|tues|wednes|thurs|fri|satur|sun)day|by (today|tomorrow|end of (day|week))|next week|this week)\b/i
+  /\b(i'?ll|i will|we'?ll|we will|you'?ll|they'?ll|call|contact|ping|reach out|message|chat with|send|share|email|mail|follow[- ]?up|circle back|schedule|book|meet|sync with|interview|prepare|draft|review|check|verify|investigate|finish|deploy|ship|build|fix|update|implement|create|add|buy|order|pay|submit|remind|get back|due|need to|have to|must|should|todo|task|action|by (mon|tues|wednes|thurs|fri|satur|sun)day|by (today|tomorrow|end of (day|week))|next week|this week)\b/i
 
 const WEEKDAYS = [
   'sunday',
@@ -64,11 +64,22 @@ export function parseDueDate(text) {
 
 /** Derive a sensible capture type from the wording. */
 export function inferCaptureType(text) {
-  const value = String(text ?? '').toLowerCase()
-  if (value.startsWith('/decision') || /\b(we (agreed|decided)|decision:)\b/.test(value)) {
+  const value = String(text ?? '').toLowerCase().trim()
+  if (
+    value.startsWith('/decision') ||
+    /\b(we (agreed|decided)|decision:|decided|agreed|chose|selected|opted|approved|resolved|confirmed)\b/.test(
+      value,
+    )
+  ) {
     return 'decision'
   }
-  if (value.startsWith('?') || value.endsWith('?') || /\b(question|ask|wonder)\b/.test(value)) {
+  if (
+    value.startsWith('?') ||
+    value.endsWith('?') ||
+    /\b(question|ask|wonder|how|what|why|where|when|who|which|can we|should we|could we|is there|do we|inquire)\b/.test(
+      value,
+    )
+  ) {
     return 'question'
   }
   if (looksLikeCommitment(text)) return 'action'

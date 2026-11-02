@@ -29,6 +29,7 @@ export const SETTINGS_SECTIONS = Object.freeze([
   { key: 'profile', label: 'Profile', icon: 'UserCircle' },
   { key: 'notifications', label: 'Notifications', icon: 'Bell' },
   { key: 'capture', label: 'Capture', icon: 'PencilSimpleLine' },
+  { key: 'threads', label: 'Threads & attention', icon: 'ChatCircleDots' },
   { key: 'appearance', label: 'Appearance', icon: 'PaintBrush' },
   { key: 'data', label: 'Data & privacy', icon: 'ShieldCheck' },
   { key: 'about', label: 'About', icon: 'Info' },
