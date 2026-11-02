@@ -275,7 +275,7 @@ class Commitment(Base):
     id = Column(String(36), primary_key=True, default=_uuid)
     user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     thread_id = Column(String(36), ForeignKey("threads.id", ondelete="CASCADE"), nullable=False)
-    person_id = Column("owner_person_id", String(36), ForeignKey("people.id", ondelete="CASCADE"), nullable=False)
+    person_id = Column("owner_person_id", String(36), ForeignKey("people.id", ondelete="SET NULL"), nullable=True)
     club_id = Column(String(36), ForeignKey("clubs.id", ondelete="SET NULL"), nullable=True)
     subthread_id = Column("capture_id", String(36), ForeignKey("captures.id", ondelete="SET NULL"), nullable=True)
     description = Column(String(500), nullable=False)

@@ -293,13 +293,13 @@ class CommitmentResponse(_Base):
     id: str
     user_id: str
     thread_id: str
-    person_id: str
+    person_id: Optional[str] = None
     club_id: Optional[str] = None
     subthread_id: Optional[str] = None
     description: str
     status: CommitmentStatus
-    deadline: Optional[datetime] = Field(alias="deadline")
-    due_date: Optional[datetime] = Field(alias="deadline")
+    deadline: Optional[datetime] = Field(None, alias="deadline")
+    due_date: Optional[datetime] = Field(None, alias="deadline")
     completed_at: Optional[datetime] = None
     completion_note: Optional[str] = None
     created_at: datetime
