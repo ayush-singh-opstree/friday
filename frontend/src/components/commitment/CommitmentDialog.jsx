@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { endOfDayIso, toDate } from '@/lib/date'
-import { useCommitmentStore, useThreadStore, useUiStore } from '@/store'
+import { useCommitmentStore, usePeopleStore, useThreadStore, useUiStore } from '@/store'
 import { Button } from '@/components/ui/Button'
 import {
   Dialog,
@@ -50,11 +50,25 @@ function CommitmentForm({
   onOpenChange,
 }) {
   const threads = useThreadStore((state) => state.threads)
+  const storePeople = usePeopleStore((state) => state.people)
+  const peopleStatus = usePeopleStore((state) => state.status)
+  const fetchPeople = usePeopleStore((state) => state.fetchPeople)
   const createCommitment = useCommitmentStore((state) => state.createCommitment)
   const updateCommitment = useCommitmentStore((state) => state.updateCommitment)
   const pushToast = useUiStore((state) => state.pushToast)
 
   const editing = Boolean(commitment)
+
+  // Callers may pass a scoped list (e.g. a thread's people). When they don't, we
+  // fall back to the full people directory and make sure it is loaded, otherwise
+  // the "Someone else" owner picker would render an empty list.
+  const hasProvidedPeople = people.length > 0
+  const directoryPeople = hasProvidedPeople ? people : storePeople
+  const loadingPeople = !hasProvidedPeople && peopleStatus === 'loading'
+
+  useEffect(() => {
+    if (!hasProvidedPeople && peopleStatus === 'idle') fetchPeople({ query: '' })
+  }, [hasProvidedPeople, peopleStatus, fetchPeople])
 
   const [description, setDescription] = useState(commitment?.description ?? '')
   const [ownerType, setOwnerType] = useState(commitment?.ownerType ?? 'me')
@@ -81,11 +95,19 @@ function CommitmentForm({
 
   const peopleOptions = [
     { value: '', label: 'Select a person…' },
-    ...people.map((person) => ({
+    ...directoryPeople.map((person) => ({
       value: person.id,
       label: person.fullName,
     })),
   ]
+
+  // Keep an already-assigned owner selectable even if it isn't in the list.
+  if (ownerPersonId && !peopleOptions.some((option) => option.value === ownerPersonId)) {
+    peopleOptions.unshift({
+      value: ownerPersonId,
+      label: commitment?.ownerPerson?.fullName ?? 'Selected person',
+    })
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -122,7 +144,7 @@ function CommitmentForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <Field label="What was promised?" htmlFor="commitment-description" error={error}>
+      <Field label="Commitment description" htmlFor="commitment-description" error={error}>
         <Input
           id="commitment-description"
           value={description}
@@ -164,12 +186,19 @@ function CommitmentForm({
       </div>
 
       {ownerType === 'person' ? (
-        <Field label="Who owns it?">
+        <Field
+          label="Who owns it?"
+          hint={
+            !loadingPeople && directoryPeople.length === 0
+              ? 'No people in your directory yet — add someone from the People page.'
+              : undefined
+          }
+        >
           <SelectMenu
             value={ownerPersonId}
             onChange={setOwnerPersonId}
             options={peopleOptions}
-            placeholder="Select a person…"
+            placeholder={loadingPeople ? 'Loading people…' : 'Select a person…'}
           />
         </Field>
       ) : null}

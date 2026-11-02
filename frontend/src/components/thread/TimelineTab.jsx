@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils'
 const FILTER_OPTIONS = [
   { key: 'all', label: 'All Activity' },
   { key: 'note', label: 'Notes' },
-  { key: 'action', label: 'Actions' },
+  
   { key: 'decision', label: 'Decisions' },
   { key: 'commitment', label: 'Commitments' },
   { key: 'system', label: 'System' },
@@ -39,7 +39,7 @@ const FILTER_OPTIONS = [
 
 const COMPOSER_TYPES = [
   { key: 'note', label: 'Note', icon: Note },
-  { key: 'action', label: 'Action', icon: Lightning },
+  { key: 'commitment', label: 'Commitment', icon: Lightning },
   { key: 'decision', label: 'Decision', icon: Sparkle },
   { key: 'question', label: 'Question', icon: Question },
 ]
@@ -228,7 +228,7 @@ export function TimelineTab({
           >
             <span className="flex items-center gap-2">
               <Plus size={15} className="text-primary" weight="bold" />
-              Add a note, decision, action, or takeaway to this timeline...
+              Add a note, decision, commitment, or takeaway to this timeline...
             </span>
             <kbd className="hidden sm:inline-block rounded border border-line bg-card px-1.5 py-0.5 text-[10px] font-mono text-ink-subtle">
               Quick post
@@ -376,7 +376,7 @@ export function TimelineTab({
         <EmptyState
           icon={<NoteBlank size={26} weight="duotone" />}
           title="No timeline history yet"
-          description="Use the capture bar above to add your first note, action item, or decision for this relationship."
+          description="Use the capture bar above to add your first note, commitment, or decision for this relationship."
         />
       ) : sortedEvents.length === 0 ? (
         <EmptyState
@@ -456,6 +456,7 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy }) {
     const nodeStyles = {
       note: 'bg-[#EEF1FE] text-[#4F6AF5] border-[#4F6AF5]/25',
       action: 'bg-[#FFF3E0] text-[#E67E22] border-[#E67E22]/25',
+      commitment: 'bg-[#FFF3E0] text-[#E67E22] border-[#E67E22]/25',
       decision: 'bg-[#E8F5E9] text-[#27AE60] border-[#27AE60]/25',
       question: 'bg-[#FCE4EC] text-[#E91E63] border-[#E91E63]/25',
     }[type] ?? 'bg-overlay text-ink-muted border-line'
@@ -463,6 +464,7 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy }) {
     const NodeIcon = {
       note: Note,
       action: Lightning,
+      commitment: Lightning,
       decision: Sparkle,
       question: Question,
     }[type] ?? Note
@@ -525,7 +527,7 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy }) {
   // 2. Commitment Created
   if (event.type === 'commitment_created') {
     const desc =
-      commitment?.description || event.metadata?.description || 'Promise or next step created'
+      commitment?.description || event.metadata?.description || 'Commitment created'
     return (
       <li className="relative flex items-start gap-3 pl-11 sm:pl-13 group">
         <span className="absolute top-2.5 left-1.5 sm:left-2 flex size-6.5 sm:size-7 items-center justify-center rounded-full border-2 border-card bg-primary/15 text-primary shadow-xs">
@@ -534,7 +536,7 @@ function TimelineRow({ event, capture, commitment, isCopied, onCopy }) {
         <div className="w-full rounded-xl border border-line/75 bg-card px-3.5 py-2.5 shadow-xs flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-tiny font-semibold text-primary">
-              Promise
+              Commitment
             </span>
             <p className="truncate text-small font-medium text-ink">{desc}</p>
           </div>

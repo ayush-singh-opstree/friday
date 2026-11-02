@@ -19,7 +19,9 @@ import {
   Bell as LucideBell,
   Bot as LucideBot,
   Brain as LucideBrain,
+  Calendar as LucideCalendar,
   Check as LucideCheck,
+  Clock as LucideClock,
   ChevronsLeft as LucideChevronsLeft,
   ChevronsRight as LucideChevronsRight,
   CircleCheck as LucideCircleCheck,
@@ -101,6 +103,9 @@ export const ArrowRight = icon(LucideArrowRight, 'ArrowRight')
 export const ArrowUp = icon(LucideArrowUp, 'ArrowUp')
 export const Bell = icon(LucideBell, 'Bell')
 export const Brain = icon(LucideBrain, 'Brain')
+export const Calendar = icon(LucideCalendar, 'Calendar')
+export const CalendarBlank = icon(LucideCalendar, 'CalendarBlank')
+export const Clock = icon(LucideClock, 'Clock')
 export const CaretDoubleLeft = icon(LucideChevronsLeft, 'CaretDoubleLeft')
 export const CaretDoubleRight = icon(LucideChevronsRight, 'CaretDoubleRight')
 export const ChatCircleDots = icon(LucideMessagesSquare, 'ChatCircleDots')

@@ -82,7 +82,7 @@ export function inferCaptureType(text) {
   ) {
     return 'question'
   }
-  if (looksLikeCommitment(text)) return 'action'
+  if (looksLikeCommitment(text)) return 'commitment'
   return 'note'
 }
 

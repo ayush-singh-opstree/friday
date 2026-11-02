@@ -45,6 +45,15 @@ export const useUiStore = create((set, get) => ({
     set({ quickCapture: { open: false, threadId: null } })
   },
 
+  /* ------------------------------------------------------------ inbox --- */
+  inboxOpen: false,
+  openInbox() {
+    set({ inboxOpen: true })
+  },
+  closeInbox() {
+    set({ inboxOpen: false })
+  },
+
   /* ------------------------------------------------------------ search --- */
   searchOpen: false,
   openSearch() {

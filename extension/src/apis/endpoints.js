@@ -23,6 +23,14 @@ export const ENDPOINTS = Object.freeze({
     snooze: (threadId) => `/threads/${threadId}/snooze`,
     timeline: (threadId) => `/threads/${threadId}/timeline`,
     people: (threadId) => `/threads/${threadId}/people`,
+    clubs: (threadId) => `/threads/${threadId}/clubs`,
+  },
+
+  clubs: {
+    start: () => '/clubs/start',
+    end: (clubId) => `/clubs/${clubId}/end`,
+    detail: (clubId) => `/clubs/${clubId}`,
+    byThread: (threadId) => `/threads/${threadId}/clubs`,
   },
 
   captures: {

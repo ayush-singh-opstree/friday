@@ -366,9 +366,9 @@ route('GET', /^\/threads$/, async ({ query }) => {
 route('POST', /^\/threads$/, async ({ body }) => {
   const user = requireUser()
   const db = getDb()
-  const title = String(body?.title ?? '').trim()
+  const title = String(body?.agenda ?? body?.title ?? '').trim()
   if (!title) {
-    throw new ApiError('Thread title is required.', { status: 422, code: 'validation_error' })
+    throw new ApiError('Agenda is required.', { status: 422, code: 'validation_error' })
   }
 
   const timestamp = nowIso()
@@ -421,6 +421,9 @@ route('PATCH', /^\/threads\/([^/]+)$/, async ({ params, body }) => {
   if (!thread) throw new ApiError('Thread not found.', { status: 404, code: 'not_found' })
 
   const patch = { ...(body ?? {}) }
+  // The backend renamed `title` -> `agenda`; normalise either key to the stored field.
+  if (patch.agenda !== undefined && patch.title === undefined) patch.title = patch.agenda
+  delete patch.agenda
   if (patch.title !== undefined) patch.title = String(patch.title).trim().slice(0, 100)
   if (patch.description !== undefined && patch.description !== null) {
     patch.description = String(patch.description).slice(0, 500)
@@ -835,9 +838,9 @@ route('POST', /^\/ai\/classify$/, async ({ body }) => {
       lower.includes(word),
     )
   ) {
-    suggestedType = 'action'
+    suggestedType = 'commitment'
     confidence = 0.9
-    reasoning = 'Contains action/promise keywords.'
+    reasoning = 'Contains commitment/promise keywords.'
   } else if (['decided', 'agreed that', 'decision', 'selected'].some((word) => lower.includes(word))) {
     suggestedType = 'decision'
     confidence = 0.88

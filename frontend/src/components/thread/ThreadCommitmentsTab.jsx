@@ -81,7 +81,7 @@ export function ThreadCommitmentsTab({ thread, commitments = [], people = [], on
       {open.length === 0 && closed.length === 0 ? (
         <EmptyState
           title="No commitments yet"
-          description="Track what you promised, or what they promised you, so nothing slips."
+          description="Track what you committed to, or what others committed to you, so nothing slips."
           action={<Button onClick={() => setDialogOpen(true)}>Create commitment</Button>}
         />
       ) : (

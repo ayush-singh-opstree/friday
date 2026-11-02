@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Sparkle, X } from '@/components/icons'
+import { CalendarBlank, Check, Sparkle, X } from '@/components/icons'
 import { aiApi } from '@/apis'
 import { CAPTURE_MAX_LENGTH, CAPTURE_TYPES, CAPTURE_TYPE_MAP } from '@/config/constants'
 import { inferCaptureType, looksLikeCommitment, parseDueDate } from '@/lib/patterns'
@@ -34,6 +34,7 @@ function QuickCaptureForm({ initialThreadId }) {
 
   const [content, setContent] = useState('')
   const [type, setType] = useState('note')
+  const [dueDate, setDueDate] = useState('')
   const [threadId, setThreadId] = useState(initialThreadId ?? null)
   const [error, setError] = useState(null)
   const [aiHint, setAiHint] = useState(null)
@@ -42,6 +43,7 @@ function QuickCaptureForm({ initialThreadId }) {
   const reset = useCallback(() => {
     setContent('')
     setType('note')
+    setDueDate('')
     setError(null)
   }, [])
 
@@ -108,7 +110,14 @@ function QuickCaptureForm({ initialThreadId }) {
     if (overLimit) return setError(`Captures are limited to ${CAPTURE_MAX_LENGTH} characters.`)
 
     try {
-      await createCapture({ content, type, threadId, source: 'manual' })
+      await createCapture({
+        content,
+        type,
+        threadId,
+        deadline: dueDate || undefined,
+        dueDate: dueDate || undefined,
+        source: 'manual',
+      })
       pushToast(threadId ? 'Capture added to the thread.' : 'Saved to your Inbox.', 'success')
       reset()
       closeQuickCapture()
@@ -180,6 +189,49 @@ function QuickCaptureForm({ initialThreadId }) {
           ))}
         </div>
 
+        {/* Commitment Due Date */}
+        {type === 'commitment' ? (
+          <div className="mt-3 rounded-xl border border-line bg-surface/70 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <label htmlFor="qc-due-date" className="text-small font-medium text-ink flex items-center gap-1.5">
+                <CalendarBlank size={14} className="text-primary" />
+                Due date (Commitment)
+              </label>
+              <input
+                id="qc-due-date"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="h-8 rounded-lg border border-line bg-card px-2.5 text-tiny text-ink focus:border-primary focus:outline-none"
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={() => setDueDate(new Date().toISOString().split('T')[0])}
+                className="rounded-md border border-line bg-card px-2 py-0.5 text-tiny text-ink-muted hover:border-primary/40 hover:text-primary transition-colors cursor-pointer"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => setDueDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])}
+                className="rounded-md border border-line bg-card px-2 py-0.5 text-tiny text-ink-muted hover:border-primary/40 hover:text-primary transition-colors cursor-pointer"
+              >
+                Tomorrow
+              </button>
+              <button
+                type="button"
+                onClick={() => setDueDate(new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0])}
+                className="rounded-md border border-line bg-card px-2 py-0.5 text-tiny text-ink-muted hover:border-primary/40 hover:text-primary transition-colors cursor-pointer"
+              >
+                Next week
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {/* Thread selector */}
         <div className="mt-3">
           <label className="mb-1.5 block text-small font-medium text-ink">
@@ -210,9 +262,9 @@ function QuickCaptureForm({ initialThreadId }) {
               <button
                 type="button"
                 className="font-semibold text-primary underline underline-offset-2"
-                onClick={() => setType('action')}
+                onClick={() => setType('commitment')}
               >
-                Track as action
+                Track as commitment
               </button>
             </p>
           </div>

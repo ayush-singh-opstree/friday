@@ -19,7 +19,8 @@ import {
   EmptyState,
   Field,
   IconButton,
-  LoadingState,
+  PersonRowSkeleton,
+  ThreadListSkeleton,
   SectionHeader,
   Tabs,
   TabsContent,
@@ -33,7 +34,7 @@ import { searchApi } from '@/apis'
 import { useDebounce } from '@/hooks/useDebounce'
 import { openOptions } from '@/lib/messaging'
 import { relativeTime } from '@/lib/date'
-import { usePeopleStore } from '@/store'
+import { usePeopleStore, useUiStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { ThreadSessionFlow } from '@/components/threads/ThreadSessionFlow'
 
@@ -45,14 +46,35 @@ import { ThreadSessionFlow } from '@/components/threads/ThreadSessionFlow'
  * - Focused on Threads & Capture Sessions, People Directory, Search, and Quick Capture.
  */
 export function SidePanelPage() {
+  const activeSession = useUiStore((state) => state.activeSession)
+
+  const formatTimer = (seconds = 0) => {
+    const m = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, '0')
+    const s = (seconds % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
+  }
+
   return (
     <div className="flex min-h-dvh flex-col bg-surface">
-      <header className="flex items-center justify-between border-b border-line bg-card/95 px-3.5 py-2.5 backdrop-blur-sm">
+      <header className="flex items-center justify-between border-b border-line bg-card/95 px-3.5 py-2 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Logo size={22} />
           <span className="text-small font-bold text-ink tracking-tight">Threadwise Companion</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          {activeSession ? (
+            <div
+              className="flex items-center gap-1.5 rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 text-tiny font-medium text-danger animate-pulse"
+              title={`Recording capture session for: ${activeSession.threadTitle}`}
+            >
+              <span className="size-1.5 rounded-full bg-danger" />
+              <span className="font-mono text-tiny font-bold tabular-nums">
+                {formatTimer(activeSession.elapsed)}
+              </span>
+            </div>
+          ) : null}
           <ThemeToggle />
           <IconButton label="Settings" size="sm" onClick={openOptions}>
             <GearSix size={16} />
@@ -206,7 +228,11 @@ function PeoplePanel() {
       </div>
 
       {isLoading && list.length === 0 ? (
-        <LoadingState label="Loading directory…" className="py-6" />
+        <div className="flex flex-col gap-1.5 py-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <PersonRowSkeleton key={i} />
+          ))}
+        </div>
       ) : list.length === 0 ? (
         <EmptyState title="No people" description="Add people from the Threadwise web app." />
       ) : (
@@ -314,7 +340,7 @@ function SearchPanel() {
           Type at least 2 characters to search.
         </p>
       ) : state.status === 'loading' ? (
-        <LoadingState label="Searching…" className="py-6" />
+        <ThreadListSkeleton count={3} />
       ) : state.status === 'error' ? (
         <EmptyState title="Search failed" description={state.error} />
       ) : rows.length === 0 ? (
@@ -376,6 +402,45 @@ function CaptureForm({ capture }) {
         })}
       </div>
 
+      {capture.type === 'commitment' ? (
+        <div className="flex flex-col gap-1 rounded-xl border border-line bg-card p-2">
+          <label htmlFor="panel-due-date" className="block text-tiny font-medium text-ink-muted">
+            Due date (Commitment)
+          </label>
+          <input
+            id="panel-due-date"
+            type="date"
+            value={capture.dueDate}
+            onChange={(e) => capture.setDueDate(e.target.value)}
+            className="h-8 w-full rounded-lg border border-line bg-overlay px-2.5 text-tiny text-ink focus:border-primary focus:bg-card focus:outline-none"
+            min={new Date().toISOString().split('T')[0]}
+          />
+          <div className="flex items-center gap-1 justify-end pt-1">
+            <button
+              type="button"
+              onClick={() => capture.setDueDate(new Date().toISOString().split('T')[0])}
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-overlay hover:bg-card text-ink-muted"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => capture.setDueDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])}
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-overlay hover:bg-card text-ink-muted"
+            >
+              Tomorrow
+            </button>
+            <button
+              type="button"
+              onClick={() => capture.setDueDate(new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0])}
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-overlay hover:bg-card text-ink-muted"
+            >
+              Next week
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div>
         <label htmlFor="panel-thread" className="mb-1 block text-tiny font-medium text-ink-muted">
           Thread
@@ -401,10 +466,10 @@ function CaptureForm({ capture }) {
           <span>Looks like a commitment.</span>
           <button
             type="button"
-            onClick={() => capture.setType('action')}
+            onClick={() => capture.setType('commitment')}
             className="font-bold text-primary underline underline-offset-2 ml-auto"
           >
-            Track it
+            Track as commitment
           </button>
         </p>
       ) : null}

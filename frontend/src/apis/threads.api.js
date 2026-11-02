@@ -72,14 +72,31 @@ export const threadsApi = {
     if (env.useMockApi) return http.get(ENDPOINTS.threads.detail(threadId))
 
     // The backend exposes these as separate resources, so compose them here.
-    const [threadDto, capturesPayload, commitmentsPayload, timelinePayload, peopleLinks] =
-      await Promise.all([
+    // Sub-resources are best-effort: if one fails (e.g. a legacy record the
+    // server cannot serialise) the thread must still open instead of the whole
+    // page erroring out.
+    const [threadResult, capturesResult, commitmentsResult, timelineResult, peopleResult] =
+      await Promise.allSettled([
         http.get(ENDPOINTS.threads.detail(threadId)),
         http.get(ENDPOINTS.captures.list(), { query: { thread_id: threadId, limit: 200 } }),
         http.get(ENDPOINTS.commitments.list(), { query: { thread_id: threadId, limit: 200 } }),
         http.get(ENDPOINTS.threads.timeline(threadId), { query: { limit: 200 } }),
-        http.get(ENDPOINTS.threads.people(threadId)).catch(() => []),
+        http.get(ENDPOINTS.threads.people(threadId)),
       ])
+
+    // The thread itself is required - only its failure should surface.
+    if (threadResult.status === 'rejected') {
+      throw threadResult.reason ?? new Error('Could not open that thread.')
+    }
+
+    const settle = (result, fallback = null) =>
+      result.status === 'fulfilled' ? result.value : fallback
+
+    const threadDto = settle(threadResult)
+    const capturesPayload = settle(capturesResult)
+    const commitmentsPayload = settle(commitmentsResult)
+    const timelinePayload = settle(timelineResult)
+    const peopleLinks = settle(peopleResult, [])
 
     const thread = toThread(threadDto)
     const captures = toList(capturesPayload).rows.map(toCapture)

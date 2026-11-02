@@ -65,7 +65,7 @@ export function CommitmentsPage() {
     <PageContainer>
       <PageHeader
         eyebrow="Commitments"
-        title="Everything you've promised"
+        title="All Commitments"
         actions={
           <Button size="sm" onClick={() => setDialogOpen(true)}>
             <Plus size={14} weight="bold" />
@@ -100,7 +100,7 @@ export function CommitmentsPage() {
         <EmptyState
           icon={<CheckSquare size={24} weight="duotone" />}
           title="Nothing outstanding"
-          description="Every promise you track will show up here, grouped by due date."
+          description="Every commitment you track will show up here, grouped by due date."
           action={<Button onClick={() => setDialogOpen(true)}>Create a commitment</Button>}
         />
       ) : (

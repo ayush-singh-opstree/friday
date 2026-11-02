@@ -18,7 +18,9 @@ export function toThread(dto) {
   return {
     id: dto.id,
     userId: dto.user_id ?? null,
-    title: dto.title,
+    // The backend renamed the thread `title` field to `agenda`; read either key
+    // so both the demo mocks and the live backend hydrate the view model.
+    title: dto.agenda ?? dto.title,
     description: dto.description ?? null,
     status: dto.status ?? 'active',
     isPinned: Boolean(dto.is_pinned),
@@ -118,9 +120,12 @@ export function toCapture(dto) {
     id: dto.id,
     userId: dto.user_id ?? null,
     threadId: dto.thread_id ?? null,
+    clubId: dto.club_id ?? null,
     personId: dto.person_id ?? null,
     type: dto.type ?? 'note',
     content: dto.content,
+    deadline: dto.deadline ?? null,
+    dueDate: dto.deadline ?? null,
     source: dto.source ?? 'manual',
     status: dto.status ?? 'filed',
     capturedAt: dto.captured_at,
@@ -195,7 +200,8 @@ export function toList(payload) {
 
 /** UI thread draft -> ThreadCreate */
 export function toThreadCreatePayload({ title, description, isPinned, goingColdThresholdDays }) {
-  const payload = { title }
+  // The backend's ThreadCreate field is `agenda` (it replaced `title`).
+  const payload = { agenda: title }
   if (description) payload.description = description
   if (isPinned !== undefined) payload.is_pinned = isPinned
   if (goingColdThresholdDays) payload.going_cold_threshold_days = goingColdThresholdDays
@@ -205,7 +211,7 @@ export function toThreadCreatePayload({ title, description, isPinned, goingColdT
 /** UI patch -> ThreadUpdate (only keys actually provided) */
 export function toThreadUpdatePayload(patch = {}) {
   const map = {
-    title: 'title',
+    title: 'agenda',
     description: 'description',
     isPinned: 'is_pinned',
     goingColdThresholdDays: 'going_cold_threshold_days',
@@ -243,13 +249,26 @@ export function toCapturePayload(capture = {}) {
   if (capture.threadId !== undefined) payload.thread_id = capture.threadId
   if (capture.personId) payload.person_id = capture.personId
   if (capture.source) payload.source = capture.source
+  if (capture.clubId) payload.club_id = capture.clubId
   if (capture.capturedAt) payload.captured_at = capture.capturedAt
+  if (capture.deadline || capture.dueDate) payload.deadline = capture.deadline || capture.dueDate
   return payload
 }
 
 /** UI commitment draft -> CommitmentCreate */
 export function toCommitmentPayload(commitment = {}) {
   const payload = { thread_id: commitment.threadId, description: commitment.description }
+  if (commitment.personId || commitment.ownerPersonId) {
+    payload.person_id = commitment.personId || commitment.ownerPersonId
+  }
+  if (commitment.clubId) payload.club_id = commitment.clubId
+  if (commitment.subthreadId || commitment.captureId) {
+    payload.subthread_id = commitment.subthreadId || commitment.captureId
+  }
+  if (commitment.deadline || commitment.dueDate) {
+    payload.deadline = commitment.deadline || commitment.dueDate
+    payload.due_date = commitment.deadline || commitment.dueDate
+  }
   if (commitment.ownerType) payload.owner_type = commitment.ownerType
   if (commitment.ownerPersonId !== undefined) payload.owner_person_id = commitment.ownerPersonId
   if (commitment.dueDate !== undefined) payload.due_date = commitment.dueDate
