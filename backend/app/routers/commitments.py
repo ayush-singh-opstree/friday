@@ -1,13 +1,6 @@
 """
 routers/commitments.py — FastAPI router for Commitment endpoints.
-
-Endpoint map (from docs/08_system_architecture.md Phase 0 priorities):
-  GET    /commitments                     list commitments (mine/theirs/overdue/due today)
-  POST   /commitments                     create commitment
-  GET    /commitments/{commitment_id}     get commitment detail
-  PATCH  /commitments/{commitment_id}     update commitment
-  DELETE /commitments/{commitment_id}     delete commitment
-  POST   /commitments/{commitment_id}/complete mark commitment as completed
+Commitments are tracked to/with a specific Person under a Thread with a deadline.
 """
 from typing import Optional
 
@@ -16,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.config import DEMO_USER_ID
 from app.db import get_db
-from app.models import CommitmentOwnerType, CommitmentStatus
+from app.models import CommitmentStatus
 from app.schemas import (
     CommitmentCompleteRequest,
     CommitmentCreate,
@@ -35,7 +28,8 @@ def get_current_user_id() -> str:
 @router.get("", response_model=dict, summary="List commitments")
 def list_commitments(
     thread_id: Optional[str] = Query(None, description="Filter by thread ID"),
-    owner_type: Optional[CommitmentOwnerType] = Query(None, description="Filter: 'me' | 'person'"),
+    person_id: Optional[str] = Query(None, description="Filter by person to whom commitment was made"),
+    club_id: Optional[str] = Query(None, description="Filter by meeting club ID"),
     status: Optional[CommitmentStatus] = Query(None, description="Filter: 'open' | 'completed'"),
     overdue_only: bool = Query(False, description="Filter only overdue open commitments"),
     due_today_only: bool = Query(False, description="Filter only commitments due today"),
@@ -48,7 +42,8 @@ def list_commitments(
         db,
         user_id=user_id,
         thread_id=thread_id,
-        owner_type=owner_type,
+        person_id=person_id,
+        club_id=club_id,
         status=status,
         overdue_only=overdue_only,
         due_today_only=due_today_only,
@@ -74,6 +69,9 @@ def create_commitment(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
+    """
+    Create a commitment strictly linked to a person and thread with a deadline.
+    """
     commitment = commitment_service.create_commitment(db, data, user_id)
     return CommitmentResponse.model_validate(commitment)
 
@@ -126,4 +124,3 @@ def complete_commitment(
 ):
     commitment = commitment_service.complete_commitment(db, commitment_id, data, user_id)
     return CommitmentResponse.model_validate(commitment)
-

@@ -1,84 +1,70 @@
 """
-schemas.py — Pydantic v2 request/response schemas for all Threadwise entities.
-
-Naming convention:
-  <Entity>Create  — fields accepted on POST (creation)
-  <Entity>Update  — fields accepted on PATCH (partial update, all optional)
-  <Entity>Response — fields returned to the client
-
-Enum types are re-exported from models.py so routers only import schemas.
+schemas.py — Pydantic v2 schemas for Threadwise with Clubs, SubThreads, and Agenda.
 """
 from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Optional
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# Re-export enums so callers only need to import from schemas
 from app.models import (
     CaptureSource,
     CaptureStatus,
-    CaptureType,
-    CommitmentOwnerType,
     CommitmentStatus,
     NotificationType,
     SnoozeTargetType,
+    SubThreadType,
     SummaryType,
     ThreadStatus,
     TimelineEventType,
 )
 
+# Alias for legacy compatibility
+CaptureType = SubThreadType
+
 __all__ = [
-    # Enums
-    "ThreadStatus", "CaptureType", "CaptureSource", "CaptureStatus",
-    "CommitmentOwnerType", "CommitmentStatus", "TimelineEventType",
-    "SummaryType", "SnoozeTargetType", "NotificationType",
+    "ThreadStatus", "SubThreadType", "CaptureType", "CaptureSource", "CaptureStatus",
+    "CommitmentStatus", "TimelineEventType", "SummaryType", "SnoozeTargetType",
+    "NotificationType",
     # User
     "UserResponse",
     # Thread
-    "ThreadCreate", "ThreadUpdate", "ThreadResponse",
+    "ThreadCreate", "ThreadUpdate", "ThreadResponse", "ThreadSnoozeRequest",
     # Person
-    "PersonCreate", "PersonUpdate", "PersonResponse",
-    # ThreadPerson
-    "ThreadPersonResponse",
-    # Capture
-    "CaptureCreate", "CaptureUpdate", "CaptureResponse",
-    "CaptureAssignRequest",
+    "PersonCreate", "PersonUpdate", "PersonResponse", "ThreadPersonResponse",
+    "ThreadAddPersonRequest", "PersonMergeRequest",
+    # Club
+    "ClubStartRequest", "ClubEndRequest", "ClubResponse", "ClubDetailResponse",
+    # SubThread (Capture)
+    "SubThreadCreate", "SubThreadUpdate", "SubThreadResponse",
+    "CaptureCreate", "CaptureUpdate", "CaptureResponse", "CaptureAssignRequest",
     # Commitment
-    "CommitmentCreate", "CommitmentUpdate", "CommitmentResponse",
-    "CommitmentCompleteRequest",
-    # TimelineEvent
+    "CommitmentCreate", "CommitmentUpdate", "CommitmentResponse", "CommitmentCompleteRequest",
+    # Timeline
     "TimelineEventResponse",
     # Summary
     "SummaryContentSchema", "SummaryResponse",
-    # SnoozeRecord
+    # Snooze
     "SnoozeCreate", "SnoozeResponse",
     # Notification
     "NotificationResponse", "NotificationPreferencesSchema", "NotificationPreferencesUpdate",
     "NotificationCreate",
     # Attention
-    "AttentionThreadItem", "TodayViewResponse",
+    "AttentionThreadItem", "TodayViewResponse", "DueTodayItem",
     # Search
     "SearchResultItem", "SearchResponse",
     # AI
-    "AISummariseRequest", "AISummariseResponse",
-    "AIBriefResponse", "AIClassifyRequest", "AIClassifyResponse",
+    "AISummariseRequest", "AISummariseResponse", "AIBriefResponse",
+    "AIClassifyRequest", "AIClassifyResponse",
 ]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Shared base config
-# ─────────────────────────────────────────────────────────────────────────────
-
 class _Base(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  User
-# ─────────────────────────────────────────────────────────────────────────────
+# ── User ──────────────────────────────────────────────────────────────────────
 
 class NotificationPreferencesSchema(_Base):
     daily_digest: bool = True
@@ -102,19 +88,23 @@ class UserResponse(_Base):
     last_active_at: datetime
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Thread
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Thread (Agenda) ───────────────────────────────────────────────────────────
 
 class ThreadCreate(_Base):
-    title: str = Field(..., max_length=100)
+    agenda: str = Field(..., max_length=100, description="The agenda/focus of this thread (replaces title)")
     description: Optional[str] = Field(None, max_length=500)
     is_pinned: bool = False
     going_cold_threshold_days: int = Field(14, ge=1, le=365)
+    person_ids: Optional[list[str]] = Field(default_factory=list, description="Initial contacts to link to this thread")
+
+    # Compatibility alias
+    @property
+    def title(self) -> str:
+        return self.agenda
 
 
 class ThreadUpdate(_Base):
-    title: Optional[str] = Field(None, max_length=100)
+    agenda: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     is_pinned: Optional[bool] = None
     going_cold_threshold_days: Optional[int] = Field(None, ge=1, le=365)
@@ -124,7 +114,8 @@ class ThreadUpdate(_Base):
 class ThreadResponse(_Base):
     id: str
     user_id: str
-    title: str
+    agenda: str = Field(alias="agenda")
+    title: str = Field(alias="agenda")
     description: Optional[str] = None
     status: ThreadStatus
     is_pinned: bool
@@ -140,9 +131,7 @@ class ThreadSnoozeRequest(_Base):
     snooze_until: datetime
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Person
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Person ────────────────────────────────────────────────────────────────────
 
 class PersonCreate(_Base):
     full_name: str = Field(..., max_length=255)
@@ -190,69 +179,109 @@ class ThreadAddPersonRequest(_Base):
 
 
 class PersonMergeRequest(_Base):
-    source_id: str     # person to merge FROM (will be deleted)
-    target_id: str     # person to merge INTO (will be kept)
+    source_id: str
+    target_id: str
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Capture
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Club / Meeting Session ────────────────────────────────────────────────────
 
-class CaptureCreate(_Base):
-    thread_id: Optional[str] = None   # null = goes to Inbox
-    person_id: Optional[str] = None
-    type: CaptureType = CaptureType.note
-    content: str = Field(..., max_length=2000)
-    source: CaptureSource = CaptureSource.manual
-    captured_at: Optional[datetime] = None   # defaults to now server-side
+class ClubStartRequest(_Base):
+    thread_id: str
+    name: Optional[str] = Field(None, description="Optional meeting name e.g. 'Discovery Call' or 'Sprint Sync'")
+    source: CaptureSource = CaptureSource.extension
 
 
-class CaptureUpdate(_Base):
+class ClubEndRequest(_Base):
+    ended_at: Optional[datetime] = None
+
+
+class ClubResponse(_Base):
+    id: str
+    user_id: str
+    thread_id: str
+    name: Optional[str] = None
+    started_at: datetime
+    ended_at: Optional[datetime] = None
+    source: CaptureSource
+    created_at: datetime
+    updated_at: datetime
+
+
+# ── SubThread / Capture ───────────────────────────────────────────────────────
+
+class SubThreadCreate(_Base):
     thread_id: Optional[str] = None
+    club_id: Optional[str] = Field(None, description="Club/meeting session ID if captured during a meeting")
+    person_id: Optional[str] = Field(None, description="Specific person associated with this note or commitment")
+    type: SubThreadType = Field(SubThreadType.note, description="Predefined type: note, follow_up, question, commitment, decision")
+    content: str = Field(..., max_length=2000)
+    deadline: Optional[datetime] = Field(None, description="Deadline if this item is a commitment or follow-up")
+    captured_at: Optional[datetime] = None
+    source: CaptureSource = CaptureSource.manual
+
+
+class SubThreadUpdate(_Base):
+    club_id: Optional[str] = None
     person_id: Optional[str] = None
-    type: Optional[CaptureType] = None
+    type: Optional[SubThreadType] = None
     content: Optional[str] = Field(None, max_length=2000)
+    deadline: Optional[datetime] = None
     status: Optional[CaptureStatus] = None
 
 
-class CaptureAssignRequest(_Base):
-    thread_id: str
-
-
-class CaptureResponse(_Base):
+class SubThreadResponse(_Base):
     id: str
     user_id: str
     thread_id: Optional[str] = None
+    club_id: Optional[str] = None
     person_id: Optional[str] = None
-    type: CaptureType
+    type: SubThreadType
     content: str
     source: CaptureSource
     status: CaptureStatus
     captured_at: datetime
+    deadline: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     is_edited: bool
     edited_at: Optional[datetime] = None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Commitment
-# ─────────────────────────────────────────────────────────────────────────────
+# Backward-compatible aliases
+CaptureCreate = SubThreadCreate
+CaptureUpdate = SubThreadUpdate
+CaptureResponse = SubThreadResponse
+
+
+class CaptureAssignRequest(_Base):
+    thread_id: str
+    club_id: Optional[str] = None
+
+
+class ClubDetailResponse(ClubResponse):
+    subthreads: list[SubThreadResponse] = Field(default_factory=list)
+
+
+# ── Commitment ────────────────────────────────────────────────────────────────
 
 class CommitmentCreate(_Base):
-    thread_id: str
-    capture_id: Optional[str] = None
+    thread_id: str = Field(..., description="Under which thread I committed this commitment")
+    person_id: str = Field(..., description="Whom I committed something to (required)")
+    club_id: Optional[str] = Field(None, description="Optional club/meeting during which commitment was made")
+    subthread_id: Optional[str] = Field(None, description="Linked subthread/capture ID")
     description: str = Field(..., max_length=500)
-    owner_type: CommitmentOwnerType = CommitmentOwnerType.me
-    owner_person_id: Optional[str] = None
-    due_date: Optional[datetime] = None
+    deadline: Optional[datetime] = Field(None, description="Proper deadline for this commitment")
+
+    # Compatibility alias for due_date
+    @property
+    def due_date(self) -> Optional[datetime]:
+        return self.deadline
 
 
 class CommitmentUpdate(_Base):
     description: Optional[str] = Field(None, max_length=500)
-    owner_type: Optional[CommitmentOwnerType] = None
-    owner_person_id: Optional[str] = None
-    due_date: Optional[datetime] = None
+    person_id: Optional[str] = None
+    deadline: Optional[datetime] = None
     status: Optional[CommitmentStatus] = None
 
 
@@ -264,21 +293,20 @@ class CommitmentResponse(_Base):
     id: str
     user_id: str
     thread_id: str
-    capture_id: Optional[str] = None
+    person_id: str
+    club_id: Optional[str] = None
+    subthread_id: Optional[str] = None
     description: str
-    owner_type: CommitmentOwnerType
-    owner_person_id: Optional[str] = None
     status: CommitmentStatus
-    due_date: Optional[datetime] = None
+    deadline: Optional[datetime] = Field(alias="deadline")
+    due_date: Optional[datetime] = Field(alias="deadline")
     completed_at: Optional[datetime] = None
     completion_note: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Timeline Event
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Timeline ──────────────────────────────────────────────────────────────────
 
 class TimelineEventResponse(_Base):
     id: str
@@ -290,9 +318,7 @@ class TimelineEventResponse(_Base):
     occurred_at: datetime
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Summary
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Summary ───────────────────────────────────────────────────────────────────
 
 class SummaryContentSchema(_Base):
     last_contact_date: Optional[datetime] = None
@@ -314,9 +340,7 @@ class SummaryResponse(_Base):
     is_stale: bool
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Snooze
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Snooze ────────────────────────────────────────────────────────────────────
 
 class SnoozeCreate(_Base):
     snooze_until: datetime
@@ -331,9 +355,7 @@ class SnoozeResponse(_Base):
     created_at: datetime
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Notification
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Notification ──────────────────────────────────────────────────────────────
 
 class NotificationCreate(_Base):
     type: NotificationType
@@ -370,12 +392,9 @@ class NotificationResponse(_Base):
     is_read: bool
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Attention Engine — Today View
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Attention Engine ──────────────────────────────────────────────────────────
 
 class AttentionThreadItem(_Base):
-    """A thread surfaced on the Today view with its computed attention data."""
     thread: ThreadResponse
     attention_score: float
     attention_reason: str
@@ -387,22 +406,21 @@ class AttentionThreadItem(_Base):
 
 class DueTodayItem(_Base):
     commitment: CommitmentResponse
-    thread_title: str
+    thread_agenda: str = Field(alias="thread_title")
+    thread_title: str = Field(alias="thread_title")
 
 
 class TodayViewResponse(_Base):
-    top_threads: list[AttentionThreadItem]     # up to 5, highest score first
-    due_today: list[DueTodayItem]              # commitments due today
-    going_cold: list[AttentionThreadItem]      # threads at/past threshold
+    top_threads: list[AttentionThreadItem]
+    due_today: list[DueTodayItem]
+    going_cold: list[AttentionThreadItem]
     generated_at: datetime
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Search
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Search ────────────────────────────────────────────────────────────────────
 
 class SearchResultItem(_Base):
-    entity_type: str        # "thread" | "person" | "capture" | "commitment"
+    entity_type: str
     entity_id: str
     title: str
     snippet: str
@@ -415,9 +433,7 @@ class SearchResponse(_Base):
     total: int
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  AI endpoints
-# ─────────────────────────────────────────────────────────────────────────────
+# ── AI ────────────────────────────────────────────────────────────────────────
 
 class AISummariseRequest(_Base):
     force_refresh: bool = False
@@ -437,8 +453,7 @@ class AIClassifyRequest(_Base):
 
 
 class AIClassifyResponse(_Base):
-    suggested_type: CaptureType
+    suggested_type: SubThreadType
     suggested_thread_id: Optional[str] = None
     confidence: float
     reasoning: str
-

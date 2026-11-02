@@ -1,20 +1,16 @@
-# routers package — individual router modules are imported here
-# and collected into the ROUTERS list used by main.py
+# routers package
 from fastapi import APIRouter
-
-# Each router module is imported here as it is created (Phase by Phase).
-# Stub routers ensure main.py never crashes during incremental development.
 
 ROUTERS: list[APIRouter] = []
 
-# Phase 2 — Threads
+# Threads
 try:
     from app.routers.threads import router as threads_router
     ROUTERS.append(threads_router)
 except ImportError:
     pass
 
-# Phase 3 — People
+# People
 try:
     from app.routers.people import router as people_router, threads_people_router
     ROUTERS.append(people_router)
@@ -22,35 +18,43 @@ try:
 except ImportError:
     pass
 
-# Phase 4 — Captures
+# Clubs (Capture Sessions / Meetings)
+try:
+    from app.routers.clubs import router as clubs_router, thread_clubs_router
+    ROUTERS.append(clubs_router)
+    ROUTERS.append(thread_clubs_router)
+except ImportError:
+    pass
+
+# Captures / SubThreads
 try:
     from app.routers.captures import router as captures_router
     ROUTERS.append(captures_router)
 except ImportError:
     pass
 
-# Phase 5 — Commitments
+# Commitments
 try:
     from app.routers.commitments import router as commitments_router
     ROUTERS.append(commitments_router)
 except ImportError:
     pass
 
-# Phase 6 — Attention
+# Attention
 try:
     from app.routers.attention import router as attention_router
     ROUTERS.append(attention_router)
 except ImportError:
     pass
 
-# Phase 8 — Search
+# Search
 try:
     from app.routers.search import router as search_router
     ROUTERS.append(search_router)
 except ImportError:
     pass
 
-# Phase 9 — AI
+# AI
 try:
     from app.routers.ai import router as ai_router
     ROUTERS.append(ai_router)
@@ -63,5 +67,3 @@ try:
     ROUTERS.append(notifications_router)
 except ImportError:
     pass
-
-

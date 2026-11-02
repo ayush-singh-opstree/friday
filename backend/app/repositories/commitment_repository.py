@@ -1,22 +1,16 @@
 """
 repositories/commitment_repository.py — Database operations for Commitment entities.
-
-Layer responsibility:
-  - Raw CRUD queries for Commitment model.
-  - Queries filtered by user_id, thread_id, owner_type, status, etc.
-  - Due date filters (overdue, due today, upcoming).
 """
 from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import asc, desc, func
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
-from app.models import Commitment, CommitmentOwnerType, CommitmentStatus
+from app.models import Commitment, CommitmentStatus
 
 
 class CommitmentRepository:
-    """All DB operations for the Commitment model."""
 
     def get_by_id(
         self, db: Session, commitment_id: str, user_id: str
@@ -32,7 +26,8 @@ class CommitmentRepository:
         db: Session,
         user_id: str,
         thread_id: Optional[str] = None,
-        owner_type: Optional[CommitmentOwnerType] = None,
+        person_id: Optional[str] = None,
+        club_id: Optional[str] = None,
         status: Optional[CommitmentStatus] = None,
         overdue_only: bool = False,
         due_today_only: bool = False,
@@ -43,8 +38,10 @@ class CommitmentRepository:
 
         if thread_id is not None:
             q = q.filter(Commitment.thread_id == thread_id)
-        if owner_type is not None:
-            q = q.filter(Commitment.owner_type == owner_type)
+        if person_id is not None:
+            q = q.filter(Commitment.person_id == person_id)
+        if club_id is not None:
+            q = q.filter(Commitment.club_id == club_id)
         if status is not None:
             q = q.filter(Commitment.status == status)
 
@@ -52,22 +49,21 @@ class CommitmentRepository:
         if overdue_only:
             q = q.filter(
                 Commitment.status == CommitmentStatus.open,
-                Commitment.due_date.isnot(None),
-                Commitment.due_date < now,
+                Commitment.deadline.isnot(None),
+                Commitment.deadline < now,
             )
         elif due_today_only:
             start_of_day = datetime(now.year, now.month, now.day, 0, 0, 0)
             end_of_day = start_of_day + timedelta(days=1)
             q = q.filter(
                 Commitment.status == CommitmentStatus.open,
-                Commitment.due_date >= start_of_day,
-                Commitment.due_date < end_of_day,
+                Commitment.deadline >= start_of_day,
+                Commitment.deadline < end_of_day,
             )
 
-        # Sort: nulls last for due_date, then ascending due_date
         return (
             q.order_by(
-                Commitment.due_date.asc().nullslast(),
+                Commitment.deadline.asc().nullslast(),
                 desc(Commitment.created_at),
             )
             .offset(offset)
@@ -80,7 +76,8 @@ class CommitmentRepository:
         db: Session,
         user_id: str,
         thread_id: Optional[str] = None,
-        owner_type: Optional[CommitmentOwnerType] = None,
+        person_id: Optional[str] = None,
+        club_id: Optional[str] = None,
         status: Optional[CommitmentStatus] = None,
         overdue_only: bool = False,
         due_today_only: bool = False,
@@ -88,8 +85,10 @@ class CommitmentRepository:
         q = db.query(func.count(Commitment.id)).filter(Commitment.user_id == user_id)
         if thread_id is not None:
             q = q.filter(Commitment.thread_id == thread_id)
-        if owner_type is not None:
-            q = q.filter(Commitment.owner_type == owner_type)
+        if person_id is not None:
+            q = q.filter(Commitment.person_id == person_id)
+        if club_id is not None:
+            q = q.filter(Commitment.club_id == club_id)
         if status is not None:
             q = q.filter(Commitment.status == status)
 
@@ -97,16 +96,16 @@ class CommitmentRepository:
         if overdue_only:
             q = q.filter(
                 Commitment.status == CommitmentStatus.open,
-                Commitment.due_date.isnot(None),
-                Commitment.due_date < now,
+                Commitment.deadline.isnot(None),
+                Commitment.deadline < now,
             )
         elif due_today_only:
             start_of_day = datetime(now.year, now.month, now.day, 0, 0, 0)
             end_of_day = start_of_day + timedelta(days=1)
             q = q.filter(
                 Commitment.status == CommitmentStatus.open,
-                Commitment.due_date >= start_of_day,
-                Commitment.due_date < end_of_day,
+                Commitment.deadline >= start_of_day,
+                Commitment.deadline < end_of_day,
             )
         return q.scalar() or 0
 
@@ -119,7 +118,7 @@ class CommitmentRepository:
                 Commitment.thread_id == thread_id,
                 Commitment.status == CommitmentStatus.open,
             )
-            .order_by(Commitment.due_date.asc().nullslast())
+            .order_by(Commitment.deadline.asc().nullslast())
             .all()
         )
 
@@ -143,4 +142,3 @@ class CommitmentRepository:
 
 
 commitment_repository = CommitmentRepository()
-
