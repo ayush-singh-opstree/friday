@@ -50,7 +50,7 @@ function assertShape(name, obj, fields) {
 const THREAD_DTO = {
   id: 'thread-1',
   user_id: 'user-1',
-  title: 'Q3 expansion',
+  agenda: 'Q3 expansion',
   description: null,
   status: 'active',
   is_pinned: true,

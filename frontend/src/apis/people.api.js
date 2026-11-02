@@ -70,7 +70,7 @@ export const peopleApi = {
     const person = toPerson(personDto)
     const threadIds = new Set((Array.isArray(linksPayload) ? linksPayload : []).map((l) => l.thread_id))
     const threads = toList(threadsPayload)
-      .rows.map((row) => ({ id: row.id, title: row.title, status: row.status }))
+      .rows.map((row) => ({ id: row.id, title: row.agenda ?? row.title, status: row.status }))
       .filter((row) => threadIds.has(row.id))
     const commitments = toList(commitmentsPayload)
       .rows.map((row) => toCommitment(row))

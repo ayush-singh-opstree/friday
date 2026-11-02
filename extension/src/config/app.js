@@ -20,11 +20,8 @@ export const APP = Object.freeze({
 /** Navigation for the side panel / options surfaces. */
 export const OPTIONS_SECTIONS = Object.freeze([
   { key: 'account', label: 'Account', icon: 'UserCircle' },
-  { key: 'connection', label: 'Connection', icon: 'PlugsConnected' },
   { key: 'appearance', label: 'Appearance', icon: 'PaintBrush' },
-  { key: 'detection', label: 'Detection', icon: 'Crosshair' },
   { key: 'notifications', label: 'Notifications', icon: 'Bell' },
-  { key: 'privacy', label: 'Privacy', icon: 'ShieldCheck' },
   { key: 'about', label: 'About', icon: 'Info' },
 ])
 

@@ -170,7 +170,7 @@ export function ThreadHeader({ thread }) {
               }}
               maxLength={100}
               autoFocus
-              aria-label="Thread title"
+              aria-label="Thread agenda"
               className="h-9 text-heading-2 font-bold"
             />
             <Button size="sm" onClick={saveTitle}>

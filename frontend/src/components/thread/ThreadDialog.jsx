@@ -54,7 +54,7 @@ function ThreadForm({ onOpenChange }) {
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (!title.trim()) {
-      setError('Thread title is required.')
+      setError('An agenda is required.')
       return
     }
 
@@ -84,7 +84,7 @@ function ThreadForm({ onOpenChange }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <Field label="Thread title" htmlFor="thread-title" error={error}>
+      <Field label="Agenda" htmlFor="thread-title" error={error}>
         <Input
           id="thread-title"
           value={title}

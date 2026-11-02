@@ -25,6 +25,14 @@ export const ENDPOINTS = Object.freeze({
     // Thread <-> person links (backend routers/people.py -> threads_people_router)
     people: (id) => `/threads/${id}/people`,
     person: (id, personId) => `/threads/${id}/people/${personId}`,
+    clubs: (id) => `/threads/${id}/clubs`,
+  },
+
+  clubs: {
+    start: () => '/clubs/start',
+    end: (clubId) => `/clubs/${clubId}/end`,
+    detail: (clubId) => `/clubs/${clubId}`,
+    byThread: (threadId) => `/threads/${threadId}/clubs`,
   },
 
   captures: {

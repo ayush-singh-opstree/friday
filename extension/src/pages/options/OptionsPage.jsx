@@ -3,8 +3,6 @@ import {
   Check,
   Monitor,
   Moon,
-  PlugsConnected,
-  ShieldCheck,
   SignOut,
   Sun,
 } from '@/components/icons'
@@ -12,11 +10,8 @@ import { ProtectedView } from '@/authorization'
 import { Logo } from '@/components/common/Logo'
 import { Button, Card, Field, SectionHeader, SwitchRow } from '@/components/ui'
 import { APP, OPTIONS_SECTIONS } from '@/config/app'
-import { APPROVED_DOMAINS, STORAGE_KEYS } from '@/config/constants'
-import { dataSource, env } from '@/config/env'
 import { useTheme } from '@/context'
 import { useAuthState, useSettings } from '@/hooks'
-import { removeValue } from '@/lib/storage'
 import { cn } from '@/lib/utils'
 
 const THEME_OPTIONS = [
@@ -29,7 +24,7 @@ const THEME_OPTIONS = [
  * Options page for Threadwise Companion.
  */
 export function OptionsPage() {
-  const [section, setSection] = useState('connection')
+  const [section, setSection] = useState('account')
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 px-4 py-8">
@@ -66,11 +61,8 @@ export function OptionsPage() {
 
       <ProtectedView title="Sign in to manage your companion">
         <div className="flex flex-col gap-4">
-          {section === 'connection' ? <ConnectionSection /> : null}
           {section === 'appearance' ? <AppearanceSection /> : null}
-          {section === 'detection' ? <DetectionSection /> : null}
           {section === 'notifications' ? <NotificationsSection /> : null}
-          {section === 'privacy' ? <PrivacySection /> : null}
           {section === 'about' ? <AboutSection /> : null}
           {section === 'account' ? <AccountSection /> : null}
         </div>
@@ -130,84 +122,6 @@ function AppearanceSection() {
   )
 }
 
-function ConnectionSection() {
-  const { user, signOut } = useAuthState()
-
-  return (
-    <Card className="p-6">
-      <SectionHeader label="Connection & Backend" />
-      <div className="mt-2 flex flex-col divide-y divide-line text-small">
-        <div className="flex items-center justify-between py-3">
-          <span className="font-medium text-ink-muted">Signed in account</span>
-          <span className="font-semibold text-ink truncate">{user?.email ?? '—'}</span>
-        </div>
-        <div className="flex items-center justify-between py-3">
-          <span className="font-medium text-ink-muted">Membership plan</span>
-          <span className="font-semibold text-primary capitalize">{user?.plan ?? 'Free'}</span>
-        </div>
-        <div className="flex items-center justify-between py-3">
-          <span className="font-medium text-ink-muted">Data source</span>
-          <span className="font-medium text-ink">{dataSource.label}</span>
-        </div>
-        <div className="flex items-center justify-between py-3">
-          <span className="font-medium text-ink-muted">API Endpoint</span>
-          <span className="font-mono text-tiny text-ink-muted truncate">{env.apiBaseUrl || 'Bundled mock dataset'}</span>
-        </div>
-      </div>
-
-      <div className="mt-5 flex items-center gap-2.5 border-t border-line pt-4">
-        <Button variant="outline" size="sm" onClick={() => removeValue(STORAGE_KEYS.MOCK_DB)}>
-          Reset demo data
-        </Button>
-        <Button variant="ghost" size="sm" onClick={signOut} className="text-danger hover:bg-danger/10 hover:text-danger gap-1.5 ml-auto">
-          <SignOut size={14} />
-          Sign out
-        </Button>
-      </div>
-    </Card>
-  )
-}
-
-function DetectionSection() {
-  const { settings, update } = useSettings()
-
-  return (
-    <Card className="p-6">
-      <SectionHeader label="Context Detection" />
-      <div className="divide-y divide-line">
-        <SwitchRow
-          id="inject"
-          label="Show floating launcher pill on supported sites"
-          description="Displays a discreet launcher in the bottom corner when a recognized person is detected."
-          checked={settings.injectCompanion}
-          onCheckedChange={(value) => update({ injectCompanion: value })}
-        />
-        <SwitchRow
-          id="linkedin"
-          label="LinkedIn profile detection"
-          description="Recognize full name and role from /in/ profile headers."
-          checked={settings.detectOnLinkedIn}
-          onCheckedChange={(value) => update({ detectOnLinkedIn: value })}
-        />
-        <SwitchRow
-          id="gmail"
-          label="Gmail thread detection"
-          description="Recognize email address and sender name in active message threads."
-          checked={settings.detectOnGmail}
-          onCheckedChange={(value) => update({ detectOnGmail: value })}
-        />
-      </div>
-
-      <div className="mt-4 flex items-start gap-2 rounded-xl bg-overlay p-3 text-tiny text-ink-muted">
-        <PlugsConnected size={15} className="mt-0.5 shrink-0 text-primary" />
-        <span>
-          <strong>Allowed domains:</strong> {APPROVED_DOMAINS.map((domain) => domain.label).join(', ')}. The extension script never reads page bodies or executes on any other domain.
-        </span>
-      </div>
-    </Card>
-  )
-}
-
 function NotificationsSection() {
   const { settings, update, setNotificationPreference } = useSettings()
   const prefs = settings.notificationPreferences
@@ -259,33 +173,25 @@ function NotificationsSection() {
   )
 }
 
-function PrivacySection() {
-  return (
-    <Card className="p-6">
-      <SectionHeader label="Privacy & Security" />
-      <div className="flex items-start gap-3 text-small text-ink-muted leading-relaxed">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-success/15 text-success">
-          <ShieldCheck size={18} />
-        </div>
-        <div>
-          <p className="font-semibold text-ink">Zero Page Scraping</p>
-          <p className="mt-1">
-            The companion reads only a person&apos;s public display name, email, and the profile URL exclusively on approved domains. Page body content is never read, analyzed, or stored. Contact data remains strictly confidential in your isolated workspace.
-          </p>
-        </div>
-      </div>
-    </Card>
-  )
-}
-
 function AccountSection() {
-  const { user } = useAuthState()
+  const { user, signOut } = useAuthState()
   return (
     <Card className="p-6">
       <SectionHeader label="Account Overview" />
       <p className="text-small text-ink-muted leading-relaxed">
         Signed in as <strong className="text-ink">{user?.fullName ?? '—'}</strong> ({user?.email ?? '—'}). Full account deletion, profile editing, and JSON data exports can be accessed anytime from the main Threadwise web application.
       </p>
+      <div className="mt-5 flex items-center border-t border-line pt-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={signOut}
+          className="ml-auto gap-1.5 text-danger hover:bg-danger/10 hover:text-danger"
+        >
+          <SignOut size={14} />
+          Sign out
+        </Button>
+      </div>
     </Card>
   )
 }

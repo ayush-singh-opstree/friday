@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarBlank,
   Check,
   CheckSquare,
   CopySimple,
@@ -21,16 +22,19 @@ import {
   EmptyState,
   Field,
   Input,
-  LoadingState,
+  PersonRowSkeleton,
+  Spinner,
   Textarea,
+  ThreadListSkeleton,
 } from '@/components/ui'
 import { usePeople, useThreads } from '@/hooks'
-import { useCaptureStore, useThreadStore } from '@/store'
+import { clubsApi } from '@/apis'
+import { useCaptureStore, useThreadStore, useUiStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/lib/date'
 
 const CAPTURE_TYPE_OPTIONS = [
-  { value: 'action', label: 'Action', icon: Lightning, tone: 'action' },
+  { value: 'commitment', label: 'Commitment', icon: Lightning, tone: 'commitment' },
   { value: 'decision', label: 'Decision', icon: CheckSquare, tone: 'decision' },
   { value: 'question', label: 'Question', icon: Question, tone: 'question' },
   { value: 'note', label: 'Note', icon: Note, tone: 'note' },
@@ -68,12 +72,15 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
   const [personSearch, setPersonSearch] = useState('')
   const [creatingPerson, setCreatingPerson] = useState(false)
   const [creatingThread, setCreatingThread] = useState(false)
+  const [startingSessionId, setStartingSessionId] = useState(null)
 
   // Active Capture Session state
   const [activeThread, setActiveThread] = useState(null)
+  const [activeClubId, setActiveClubId] = useState(null)
   const [sessionCaptures, setSessionCaptures] = useState([])
   const [captureInput, setCaptureInput] = useState('')
-  const [captureType, setCaptureType] = useState('action')
+  const [captureType, setCaptureType] = useState('commitment')
+  const [captureDueDate, setCaptureDueDate] = useState('')
   const [sessionElapsed, setSessionElapsed] = useState(0)
   const [stoppingSession, setStoppingSession] = useState(false)
 
@@ -85,12 +92,27 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
   const captureInputRef = useRef(null)
 
   useEffect(() => {
-    if (step !== 'session') return undefined
+    if (step !== 'session') {
+      useUiStore.getState().clearActiveSession()
+      return undefined
+    }
+    useUiStore.getState().setActiveSession({
+      threadTitle: activeThread?.title ?? 'Session',
+      elapsed: 0,
+      clubId: activeClubId,
+    })
     const interval = setInterval(() => {
-      setSessionElapsed((prev) => prev + 1)
+      setSessionElapsed((prev) => {
+        const next = prev + 1
+        useUiStore.getState().updateSessionElapsed(next)
+        return next
+      })
     }, 1000)
-    return () => clearInterval(interval)
-  }, [step])
+    return () => {
+      clearInterval(interval)
+      useUiStore.getState().clearActiveSession()
+    }
+  }, [step, activeThread, activeClubId])
 
   // Filtered threads for home
   const filteredThreads = useMemo(() => {
@@ -169,10 +191,28 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         personIds: selectedPersonIds,
       })
       if (thread) {
+        let clubId = null
+        try {
+          const club = await clubsApi.start({
+            threadId: thread.id,
+            name: `${thread.title} Session`,
+            source: 'extension',
+          })
+          clubId = club?.id ?? null
+        } catch {
+          // fallback
+        }
         setActiveThread(thread)
+        setActiveClubId(clubId)
         setSessionCaptures([])
         setCaptureInput('')
+        setCaptureDueDate('')
         setSessionElapsed(0)
+        useUiStore.getState().setActiveSession({
+          threadTitle: thread.title,
+          elapsed: 0,
+          clubId,
+        })
         setStep('session')
         refreshThreads()
       }
@@ -184,11 +224,32 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
   }
 
   // Start session for an existing thread
-  const handleStartExistingThreadSession = (thread) => {
+  const handleStartExistingThreadSession = async (thread) => {
+    setStartingSessionId(thread.id)
+    let clubId = null
+    try {
+      const club = await clubsApi.start({
+        threadId: thread.id,
+        name: `${thread.title} Session`,
+        source: 'extension',
+      })
+      clubId = club?.id ?? null
+    } catch {
+      // fallback
+    } finally {
+      setStartingSessionId(null)
+    }
     setActiveThread(thread)
+    setActiveClubId(clubId)
     setSessionCaptures([])
     setCaptureInput('')
+    setCaptureDueDate('')
     setSessionElapsed(0)
+    useUiStore.getState().setActiveSession({
+      threadTitle: thread.title,
+      elapsed: 0,
+      clubId,
+    })
     setStep('session')
   }
 
@@ -204,10 +265,12 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         id: `sess_cap_${Date.now()}_${Math.random()}`,
         content,
         type: captureType,
+        dueDate: captureType === 'commitment' ? (captureDueDate || null) : null,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ])
     setCaptureInput('')
+    setCaptureDueDate('')
     if (captureInputRef.current) {
       captureInputRef.current.focus()
     }
@@ -222,25 +285,39 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
   const handleStopAndClub = async () => {
     if (!activeThread) return
     setStoppingSession(true)
+    useUiStore.getState().clearActiveSession()
 
     try {
-      // 1. Save all individual structured captures
+      // 1. End club in backend if active
+      if (activeClubId) {
+        try {
+          await clubsApi.end(activeClubId, new Date().toISOString())
+        } catch {
+          // Continue
+        }
+      }
+
+      // 2. Save all individual structured captures with real API
       for (const cap of sessionCaptures) {
         try {
           await createCapture({
             content: cap.content,
             type: cap.type,
             threadId: activeThread.id,
-            source: 'extension_session',
+            clubId: activeClubId || undefined,
+            deadline: cap.dueDate || undefined,
+            dueDate: cap.dueDate || undefined,
+            personId: selectedPersonIds[0] || (activeThread.people?.[0]?.id) || undefined,
+            source: 'extension',
           })
         } catch {
           // Continue saving remaining captures
         }
       }
 
-      // 2. Perform frontend clubbing into a comprehensive Session Recap
+      // 3. Perform frontend clubbing into a comprehensive Session Recap
       const decisions = sessionCaptures.filter((c) => c.type === 'decision')
-      const actions = sessionCaptures.filter((c) => c.type === 'action')
+      const commitments = sessionCaptures.filter((c) => c.type === 'commitment' || c.type === 'action')
       const questions = sessionCaptures.filter((c) => c.type === 'question')
       const notes = sessionCaptures.filter((c) => c.type === 'note')
 
@@ -267,8 +344,8 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         decisions.length
           ? `🎯 Decisions (${decisions.length}):\n${decisions.map((d) => `• ${d.content}`).join('\n')}\n`
           : null,
-        actions.length
-          ? `⚡ Actions (${actions.length}):\n${actions.map((a) => `• ${a.content}`).join('\n')}\n`
+        commitments.length
+          ? `🤝 Commitments (${commitments.length}):\n${commitments.map((a) => `• ${a.content}${a.dueDate ? ` (Due: ${a.dueDate})` : ''}`).join('\n')}\n`
           : null,
         questions.length
           ? `❓ Questions (${questions.length}):\n${questions.map((q) => `• ${q.content}`).join('\n')}\n`
@@ -281,12 +358,13 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         .join('\n')
         .trim()
 
-      // 3. Save the clubbed summary capture
+      // 4. Save the clubbed summary capture
       await createCapture({
         content: summaryParts,
         type: 'note',
         threadId: activeThread.id,
-        source: 'clubbed_session',
+        clubId: activeClubId || undefined,
+        source: 'extension',
       })
 
       setClubbedSummary(summaryParts)
@@ -386,7 +464,7 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
           </div>
 
           {threadsLoading && filteredThreads.length === 0 ? (
-            <LoadingState label="Loading threads…" className="py-8" />
+            <ThreadListSkeleton count={4} />
           ) : filteredThreads.length === 0 ? (
             <EmptyState
               title={searchQuery ? 'No matching threads' : 'No threads found'}
@@ -410,6 +488,7 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
                     <Button
                       size="sm"
                       variant="secondary"
+                      loading={startingSessionId === thread.id}
                       onClick={() => handleStartExistingThreadSession(thread)}
                       className="shrink-0 text-tiny h-7 px-2.5 gap-1 shadow-2xs"
                     >
@@ -460,7 +539,7 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         </div>
 
         <div className="flex flex-1 flex-col gap-3 pt-1">
-          <Field label="Thread Title" htmlFor="new-thread-title">
+          <Field label="Agenda" htmlFor="new-thread-title">
             <Input
               id="new-thread-title"
               autoFocus
@@ -622,7 +701,14 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         </div>
 
         {/* Existing People List */}
-        <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto scroll-slim pr-0.5">
+        {people.length === 0 ? (
+          <div className="flex flex-col gap-1.5 py-1">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <PersonRowSkeleton key={i} />
+            ))}
+          </div>
+        ) : (
+          <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto scroll-slim pr-0.5">
           {filteredPeople.map((person) => {
             const isSelected = selectedPersonIds.includes(person.id)
             return (
@@ -662,6 +748,7 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
             )
           })}
         </ul>
+        )}
 
         {/* Action Footer */}
         <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-line">
@@ -687,13 +774,25 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
   // -------------------------------------------------------------
   if (step === 'session') {
     return (
-      <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+      <div className="flex flex-1 flex-col gap-2.5 p-3.5 relative">
+        {stoppingSession ? (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-card/92 backdrop-blur-xs p-6 text-center">
+            <div className="relative flex size-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/25 shadow-sm mb-3">
+              <Spinner className="size-6 text-primary" />
+            </div>
+            <p className="text-small font-bold text-ink">Clubbing & Filing Session Recap...</p>
+            <p className="text-tiny text-ink-muted mt-1 max-w-[220px]">
+              Saving captures, filing commitments, and generating summary
+            </p>
+          </div>
+        ) : null}
+
         {/* Active Session Status Bar */}
-        <div className="flex items-center justify-between rounded-xl border border-danger/30 bg-danger/10 px-3 py-2">
+        <div className="flex items-center justify-between rounded-xl border border-line/75 bg-card px-3 py-2 shadow-2xs">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="relative flex size-2.5">
+            <span className="relative flex size-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-75"></span>
-              <span className="relative inline-flex size-2.5 rounded-full bg-danger"></span>
+              <span className="relative inline-flex size-2 rounded-full bg-danger"></span>
             </span>
             <div className="min-w-0">
               <p className="truncate text-tiny font-bold text-ink">
@@ -704,8 +803,8 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
               </p>
             </div>
           </div>
-          <span className="font-mono text-tiny font-bold text-danger bg-card/80 px-2 py-0.5 rounded-md border border-danger/20">
-            {formatTimer(sessionElapsed)}
+          <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+            Recording
           </span>
         </div>
 
@@ -723,7 +822,7 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
             autoFocus
             value={captureInput}
             onChange={(e) => setCaptureInput(e.target.value)}
-            placeholder="Type note, promise, decision, question..."
+            placeholder="Type note, commitment, decision, question..."
             className="h-9 w-full rounded-lg border border-line bg-overlay px-2.5 text-small text-ink focus:border-primary focus:bg-card focus:outline-none"
           />
 
@@ -765,6 +864,48 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
               Add
             </Button>
           </div>
+
+          {/* Commitment Due Date Field */}
+          {captureType === 'commitment' ? (
+            <div className="flex flex-col gap-1 rounded-lg border border-line/60 bg-overlay/50 p-2 pt-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-medium text-ink-muted flex items-center gap-1">
+                  <CalendarBlank size={12} />
+                  Due date (Commitment):
+                </span>
+                <input
+                  type="date"
+                  value={captureDueDate}
+                  onChange={(e) => setCaptureDueDate(e.target.value)}
+                  className="h-6.5 text-tiny rounded border border-line bg-card px-1.5 text-ink focus:border-primary focus:outline-none"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div className="flex items-center gap-1 justify-end pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setCaptureDueDate(new Date().toISOString().split('T')[0])}
+                  className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-card hover:bg-overlay text-ink-muted transition-colors cursor-pointer"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCaptureDueDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])}
+                  className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-card hover:bg-overlay text-ink-muted transition-colors cursor-pointer"
+                >
+                  Tomorrow
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCaptureDueDate(new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0])}
+                  className="rounded px-1.5 py-0.5 text-[10px] font-medium border border-line bg-card hover:bg-overlay text-ink-muted transition-colors cursor-pointer"
+                >
+                  Next week
+                </button>
+              </div>
+            </div>
+          ) : null}
         </form>
 
         {/* Captures Logged in this Session */}
@@ -792,9 +933,17 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
                     <Chip tone={item.type} className="text-[10px] h-5 px-1.5 shrink-0 mt-0.5">
                       {item.type}
                     </Chip>
-                    <span className="text-ink text-small leading-tight break-words">
-                      {item.content}
-                    </span>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-ink text-small leading-tight break-words">
+                        {item.content}
+                      </span>
+                      {item.dueDate ? (
+                        <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold text-accent">
+                          <CalendarBlank size={10} />
+                          Due {item.dueDate}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   <button
                     type="button"

@@ -41,8 +41,8 @@ export const CAPTURE_TYPES = Object.freeze([
     chipClass: 'bg-[#EEF1FE] text-[#4F6AF5]',
   },
   {
-    value: 'action',
-    label: 'Action',
+    value: 'commitment',
+    label: 'Commitment',
     icon: 'Lightning',
     chipClass: 'bg-[#FFF3E0] text-[#E67E22]',
   },

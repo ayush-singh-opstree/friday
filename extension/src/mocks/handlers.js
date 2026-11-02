@@ -371,9 +371,9 @@ route('GET', /^\/threads$/, async ({ query }) => {
 route('POST', /^\/threads$/, async ({ body }) => {
   const user = requireUser()
   const db = getDb()
-  const title = String(body?.title ?? '').trim()
+  const title = String(body?.agenda ?? body?.title ?? '').trim()
   if (!title) {
-    throw new ApiError('Thread title is required.', { status: 422, code: 'validation_error' })
+    throw new ApiError('Agenda is required.', { status: 422, code: 'validation_error' })
   }
 
   const timestamp = nowIso()
@@ -432,6 +432,9 @@ route('PATCH', /^\/threads\/([^/]+)$/, async ({ params, body }) => {
   if (!thread) throw new ApiError('Thread not found.', { status: 404, code: 'not_found' })
 
   const patch = { ...(body ?? {}) }
+  // The backend renamed `title` -> `agenda`; normalise either key to the stored field.
+  if (patch.agenda !== undefined && patch.title === undefined) patch.title = patch.agenda
+  delete patch.agenda
   if (patch.title !== undefined) patch.title = String(patch.title).trim().slice(0, 100)
   if (patch.description !== undefined && patch.description !== null) {
     patch.description = String(patch.description).slice(0, 500)
@@ -506,6 +509,56 @@ route('POST', /^\/threads\/([^/]+)\/snooze$/, async ({ params, body }) => {
 
   await persistDb()
   return { thread: decorateThread(db, thread), snoozeUntil }
+})
+
+/* clubs ------------------------------------------------------------------ */
+
+route('POST', /^\/clubs\/start$/, async ({ body }) => {
+  requireUser()
+  const db = getDb()
+  if (!db.clubs) db.clubs = []
+  const club = {
+    id: uid('club'),
+    userId: db.user.id,
+    threadId: String(body?.thread_id ?? body?.threadId ?? ''),
+    name: body?.name || 'Meeting Session',
+    source: body?.source || 'extension',
+    startedAt: nowIso(),
+    endedAt: null,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  }
+  db.clubs.push(club)
+  await persistDb()
+  return club
+})
+
+route('POST', /^\/clubs\/([^/]+)\/end$/, async ({ params, body }) => {
+  requireUser()
+  const db = getDb()
+  if (!db.clubs) db.clubs = []
+  const club = db.clubs.find((c) => c.id === params[0])
+  if (club) {
+    club.endedAt = body?.ended_at || nowIso()
+    club.updatedAt = nowIso()
+    await persistDb()
+    return club
+  }
+  return { id: params[0], ended_at: nowIso() }
+})
+
+route('GET', /^\/clubs\/([^/]+)$/, async ({ params }) => {
+  requireUser()
+  const db = getDb()
+  const club = db.clubs?.find((c) => c.id === params[0]) || { id: params[0], subthreads: [] }
+  const subthreads = (db.captures || []).filter((c) => c.clubId === params[0])
+  return { ...club, subthreads }
+})
+
+route('GET', /^\/threads\/([^/]+)\/clubs$/, async ({ params }) => {
+  requireUser()
+  const db = getDb()
+  return (db.clubs || []).filter((c) => c.threadId === params[0])
 })
 
 /* captures --------------------------------------------------------------- */

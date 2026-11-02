@@ -44,4 +44,18 @@ export const useUiStore = create((set, get) => ({
   setBusy(label) {
     set({ busyLabel: label })
   },
+
+  /** Active capture session state for header display. */
+  activeSession: null,
+  setActiveSession(session) {
+    set({ activeSession: session })
+  },
+  updateSessionElapsed(elapsed) {
+    set((state) => ({
+      activeSession: state.activeSession ? { ...state.activeSession, elapsed } : null,
+    }))
+  },
+  clearActiveSession() {
+    set({ activeSession: null })
+  },
 }))

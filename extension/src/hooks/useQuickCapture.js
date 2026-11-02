@@ -21,6 +21,7 @@ export function useQuickCapture({
 } = {}) {
   const [content, setContent] = useState('')
   const [type, setType] = useState('note')
+  const [dueDate, setDueDate] = useState('')
   /** null = Inbox */
   const [targetThreadId, setTargetThreadId] = useState(threadId)
   const [error, setError] = useState(null)
@@ -62,22 +63,27 @@ export function useQuickCapture({
         type,
         threadId: targetThreadId,
         personId,
+        deadline: dueDate || undefined,
+        dueDate: dueDate || undefined,
         source,
       })
       setLastSaved(capture ?? null)
       setContent('')
       setType('note')
+    setDueDate('')
+      setDueDate('')
       onSaved?.(capture)
       return capture
     } catch (saveError) {
       setError(saveError?.message ?? 'Could not save that capture.')
       return null
     }
-  }, [content, type, targetThreadId, personId, source, onSaved])
+  }, [content, type, dueDate, targetThreadId, personId, source, onSaved])
 
   const reset = useCallback(() => {
     setContent('')
     setType('note')
+    setDueDate('')
     setError(null)
   }, [])
 
@@ -86,6 +92,8 @@ export function useQuickCapture({
     setContent,
     type,
     setType,
+    dueDate,
+    setDueDate,
     targetThreadId,
     setTargetThreadId,
     saving,
