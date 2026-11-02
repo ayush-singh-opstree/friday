@@ -8,6 +8,7 @@ import {
   threadListParams,
   toCapture,
   toCommitment,
+  toClubList,
   toList,
   toThread,
   toThreadCreatePayload,
@@ -75,14 +76,21 @@ export const threadsApi = {
     // Sub-resources are best-effort: if one fails (e.g. a legacy record the
     // server cannot serialise) the thread must still open instead of the whole
     // page erroring out.
-    const [threadResult, capturesResult, commitmentsResult, timelineResult, peopleResult] =
-      await Promise.allSettled([
-        http.get(ENDPOINTS.threads.detail(threadId)),
-        http.get(ENDPOINTS.captures.list(), { query: { thread_id: threadId, limit: 200 } }),
-        http.get(ENDPOINTS.commitments.list(), { query: { thread_id: threadId, limit: 200 } }),
-        http.get(ENDPOINTS.threads.timeline(threadId), { query: { limit: 200 } }),
-        http.get(ENDPOINTS.threads.people(threadId)),
-      ])
+    const [
+      threadResult,
+      capturesResult,
+      commitmentsResult,
+      timelineResult,
+      peopleResult,
+      clubsResult,
+    ] = await Promise.allSettled([
+      http.get(ENDPOINTS.threads.detail(threadId)),
+      http.get(ENDPOINTS.captures.list(), { query: { thread_id: threadId, limit: 200 } }),
+      http.get(ENDPOINTS.commitments.list(), { query: { thread_id: threadId, limit: 200 } }),
+      http.get(ENDPOINTS.threads.timeline(threadId), { query: { limit: 200 } }),
+      http.get(ENDPOINTS.threads.people(threadId)),
+      http.get(ENDPOINTS.threads.clubs(threadId), { query: { limit: 200 } }),
+    ])
 
     // The thread itself is required - only its failure should surface.
     if (threadResult.status === 'rejected') {
@@ -97,6 +105,7 @@ export const threadsApi = {
     const commitmentsPayload = settle(commitmentsResult)
     const timelinePayload = settle(timelineResult)
     const peopleLinks = settle(peopleResult, [])
+    const clubsPayload = settle(clubsResult)
 
     const thread = toThread(threadDto)
     const captures = toList(capturesPayload).rows.map(toCapture)
@@ -104,12 +113,13 @@ export const threadsApi = {
       toCommitment(row, thread?.title ?? null),
     )
     const timeline = (Array.isArray(timelinePayload) ? timelinePayload : []).map(toTimelineEvent)
+    const clubs = toClubList(clubsPayload)
 
     if (thread) {
       thread.people = toThreadPeople(peopleLinks)
       thread.openCommitmentCount = commitments.filter((row) => row.status === 'open').length
     }
-    return { thread, captures, commitments, timeline, summaries: [] }
+    return { thread, captures, commitments, timeline, clubs, summaries: [] }
   },
 
   /**
@@ -162,12 +172,13 @@ export const threadsApi = {
 
 /** Capture API - the write path behind Quick Capture everywhere in the app. */
 export const capturesApi = {
-  /** @param {{ threadId?: string, status?: 'inbox'|'filed', personId?: string }} [params] */
+  /** @param {{ threadId?: string, clubId?: string, status?: 'inbox'|'filed', personId?: string }} [params] */
   list: async (params = {}) => {
     if (env.useMockApi) return http.get(ENDPOINTS.captures.list(), { query: params })
 
     const query = { limit: 200 }
     if (params.threadId) query.thread_id = params.threadId
+    if (params.clubId) query.club_id = params.clubId
     if (params.status) query.status = params.status
     if (params.personId) query.person_id = params.personId
 
@@ -186,7 +197,7 @@ export const capturesApi = {
     return { capture: toCapture(dto) }
   },
 
-  /** @param {string} captureId @param {{ content?: string, type?: string }} patch */
+  /** @param {string} captureId @param {{ content?: string, type?: string, threadId?: string, clubId?: string, deadline?: string }} patch */
   update: async (captureId, patch) => {
     if (env.useMockApi) return http.patch(ENDPOINTS.captures.update(captureId), patch)
 
@@ -194,16 +205,23 @@ export const capturesApi = {
     if (patch.content !== undefined) body.content = patch.content
     if (patch.type !== undefined) body.type = patch.type
     if (patch.threadId !== undefined) body.thread_id = patch.threadId
+    if (patch.clubId !== undefined) body.club_id = patch.clubId
+    if (patch.deadline !== undefined) body.deadline = patch.deadline
     const dto = await http.patch(ENDPOINTS.captures.update(captureId), body)
     return { capture: toCapture(dto) }
   },
 
   remove: (captureId) => http.delete(ENDPOINTS.captures.remove(captureId)),
 
-  /** File an Inbox capture into a thread. */
-  assign: async (captureId, threadId) => {
-    if (env.useMockApi) return http.post(ENDPOINTS.captures.assign(captureId), { threadId })
-    const dto = await http.post(ENDPOINTS.captures.assign(captureId), { thread_id: threadId })
+  /** File an Inbox capture into a thread (optionally into a club session). */
+  assign: async (captureId, threadId, clubId = null) => {
+    if (env.useMockApi) {
+      return http.post(ENDPOINTS.captures.assign(captureId), { threadId, clubId })
+    }
+    const dto = await http.post(ENDPOINTS.captures.assign(captureId), {
+      thread_id: threadId,
+      club_id: clubId ?? null,
+    })
     return { capture: toCapture(dto) }
   },
 }

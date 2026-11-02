@@ -26,6 +26,7 @@ export function ThreadDetailPage() {
   const captures = useThreadStore((state) => state.captures)
   const commitments = useThreadStore((state) => state.commitments)
   const timeline = useThreadStore((state) => state.timeline)
+  const clubs = useThreadStore((state) => state.clubs)
   const summaries = useThreadStore((state) => state.summaries)
   const status = useThreadStore((state) => state.detailStatus)
   const error = useThreadStore((state) => state.error)
@@ -36,7 +37,11 @@ export function ThreadDetailPage() {
     selectThread(threadId)
   }, [threadId, selectThread])
 
-  if (status === 'loading' && !thread) return <LoadingState label="Opening thread…" />
+  // Never render a thread whose id doesn't match the route (e.g. the frame right
+  // after switching threads, before the store effect runs).
+  const isStaleThread = Boolean(thread) && thread.id !== threadId
+
+  if ((status === 'loading' && !thread) || isStaleThread) return <LoadingState label="Opening thread…" />
 
   if (status === 'error') {
     return (
@@ -88,6 +93,7 @@ export function ThreadDetailPage() {
             timeline={timeline}
             captures={captures}
             commitments={commitments}
+            clubs={clubs}
             threadId={thread.id}
             onRefresh={() => selectThread(thread.id)}
           />

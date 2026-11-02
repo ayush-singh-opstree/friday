@@ -25,9 +25,9 @@ export const commitmentsApi = {
     const payload = await http.get(ENDPOINTS.commitments.list(), {
       query: commitmentListParams({
         threadId: params.threadId,
+        clubId: params.clubId,
         status: params.status,
-        owner: params.owner,
-        overdueOnly: params.owner === 'overdue' || params.overdueOnly,
+        overdueOnly: params.overdueOnly ?? params.owner === 'overdue',
       }),
     })
     const commitments = toList(payload).rows.map((row) => toCommitment(row))

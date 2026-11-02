@@ -5,7 +5,6 @@ import {
   CalendarBlank,
   Check,
   CheckSquare,
-  CopySimple,
   Lightning,
   MagnifyingGlass,
   Note,
@@ -45,7 +44,7 @@ const CAPTURE_TYPE_OPTIONS = [
  * 1. Home: Create New Thread / Search Threads / Recent Threads (No Needs Attention).
  * 2. Create Thread: Title & Description -> Add People (Existing or Create New).
  * 3. Live Capture Session: Rapid multi-type logging with active timer.
- * 4. Stop Capturing: Frontend clubbing into a structured session recap.
+ * 4. Stop Capturing: ends the club and saves the captures (no recap generated).
  */
 export function ThreadSessionFlow({ onOpenCompanion }) {
   const { threads, isLoading: threadsLoading, refresh: refreshThreads } = useThreads({ autoLoad: true })
@@ -84,10 +83,6 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
   const [sessionElapsed, setSessionElapsed] = useState(0)
   const [stoppingSession, setStoppingSession] = useState(false)
 
-  // Summary state
-  const [clubbedSummary, setClubbedSummary] = useState('')
-  const [copied, setCopied] = useState(false)
-
   // Active session timer
   const captureInputRef = useRef(null)
 
@@ -102,17 +97,19 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
       clubId: activeClubId,
     })
     const interval = setInterval(() => {
-      setSessionElapsed((prev) => {
-        const next = prev + 1
-        useUiStore.getState().updateSessionElapsed(next)
-        return next
-      })
+      setSessionElapsed((prev) => prev + 1)
     }, 1000)
     return () => {
       clearInterval(interval)
       useUiStore.getState().clearActiveSession()
     }
   }, [step, activeThread, activeClubId])
+
+  // Mirror the elapsed counter into the floating session pill.
+  useEffect(() => {
+    if (step !== 'session') return
+    useUiStore.getState().updateSessionElapsed(sessionElapsed)
+  }, [sessionElapsed, step])
 
   // Filtered threads for home
   const filteredThreads = useMemo(() => {
@@ -137,15 +134,6 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         p.role?.toLowerCase().includes(q),
     )
   }, [people, personSearch])
-
-  // Format MM:SS
-  const formatTimer = (seconds) => {
-    const m = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, '0')
-    const s = (seconds % 60).toString().padStart(2, '0')
-    return `${m}:${s}`
-  }
 
   // Handle adding an inline person
   const handleCreatePersonInline = async (e) => {
@@ -281,8 +269,8 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
     setSessionCaptures((prev) => prev.filter((c) => c.id !== id))
   }
 
-  // Stop capturing & perform Frontend Clubbing
-  const handleStopAndClub = async () => {
+  // Stop capturing: close the club and persist the individual captures.
+  const handleStopSession = async () => {
     if (!activeThread) return
     setStoppingSession(true)
     useUiStore.getState().clearActiveSession()
@@ -315,59 +303,7 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
         }
       }
 
-      // 3. Perform frontend clubbing into a comprehensive Session Recap
-      const decisions = sessionCaptures.filter((c) => c.type === 'decision')
-      const commitments = sessionCaptures.filter((c) => c.type === 'commitment' || c.type === 'action')
-      const questions = sessionCaptures.filter((c) => c.type === 'question')
-      const notes = sessionCaptures.filter((c) => c.type === 'note')
-
-      const dateStr = new Date().toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-      const timeStr = new Date().toLocaleTimeString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-      const durationStr = formatTimer(sessionElapsed)
-
-      const participantNames = selectedPersonIds
-        .map((id) => people.find((p) => p.id === id)?.fullName)
-        .filter(Boolean)
-
-      const summaryParts = [
-        `📋 Session Recap: ${activeThread.title}`,
-        `🗓️ ${dateStr} at ${timeStr} · Duration: ${durationStr}`,
-        participantNames.length ? `👥 Participants: ${participantNames.join(', ')}` : null,
-        '',
-        decisions.length
-          ? `🎯 Decisions (${decisions.length}):\n${decisions.map((d) => `• ${d.content}`).join('\n')}\n`
-          : null,
-        commitments.length
-          ? `🤝 Commitments (${commitments.length}):\n${commitments.map((a) => `• ${a.content}${a.dueDate ? ` (Due: ${a.dueDate})` : ''}`).join('\n')}\n`
-          : null,
-        questions.length
-          ? `❓ Questions (${questions.length}):\n${questions.map((q) => `• ${q.content}`).join('\n')}\n`
-          : null,
-        notes.length
-          ? `📝 Notes (${notes.length}):\n${notes.map((n) => `• ${n.content}`).join('\n')}\n`
-          : null,
-      ]
-        .filter((part) => part !== null)
-        .join('\n')
-        .trim()
-
-      // 4. Save the clubbed summary capture
-      await createCapture({
-        content: summaryParts,
-        type: 'note',
-        threadId: activeThread.id,
-        clubId: activeClubId || undefined,
-        source: 'extension',
-      })
-
-      setClubbedSummary(summaryParts)
+      // 3. No recap/summary is generated - the session simply ends here.
       setStep('summary')
       refreshThreads()
     } catch {
@@ -376,14 +312,6 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
     } finally {
       setStoppingSession(false)
     }
-  }
-
-  // Copy clubbed recap
-  const handleCopySummary = () => {
-    if (!clubbedSummary) return
-    navigator.clipboard.writeText(clubbedSummary)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   // Reset to home
@@ -395,7 +323,6 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
     setActiveThread(null)
     setSessionCaptures([])
     setCaptureInput('')
-    setClubbedSummary('')
     setSearchQuery('')
   }
 
@@ -780,9 +707,9 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
             <div className="relative flex size-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/25 shadow-sm mb-3">
               <Spinner className="size-6 text-primary" />
             </div>
-            <p className="text-small font-bold text-ink">Clubbing & Filing Session Recap...</p>
+            <p className="text-small font-bold text-ink">Stopping Session...</p>
             <p className="text-tiny text-ink-muted mt-1 max-w-[220px]">
-              Saving captures, filing commitments, and generating summary
+              Saving captures and filing commitments
             </p>
           </div>
         ) : null}
@@ -965,10 +892,10 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
             size="sm"
             loading={stoppingSession}
             disabled={sessionCaptures.length === 0}
-            onClick={handleStopAndClub}
+            onClick={handleStopSession}
             className="w-full gap-1.5 font-bold shadow-sm"
           >
-            ■ Stop Capturing & Club All ({sessionCaptures.length})
+            ■ Stop Capturing ({sessionCaptures.length})
           </Button>
 
           <Button
@@ -986,7 +913,7 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
   }
 
   // -------------------------------------------------------------
-  // VIEW 5: SESSION COMPLETED & CLUBBED RECAP
+  // VIEW 5: SESSION ENDED (no recap is generated or stored)
   // -------------------------------------------------------------
   if (step === 'summary') {
     return (
@@ -996,31 +923,16 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
             <Check size={16} weight="bold" />
           </div>
           <div>
-            <h2 className="text-small font-bold text-ink">Session Clubbed & Saved</h2>
+            <h2 className="text-small font-bold text-ink">Session Ended</h2>
             <p className="text-tiny text-ink-subtle">
-              Filed into “{activeThread?.title}”
+              Captures saved to “{activeThread?.title}”
             </p>
           </div>
         </div>
 
-        {/* Clubbed Markdown Summary Card */}
-        <div className="flex flex-1 flex-col min-h-0 rounded-xl border border-line bg-card p-3 shadow-xs">
-          <div className="mb-2 flex items-center justify-between border-b border-line/60 pb-1.5">
-            <span className="text-tiny font-bold text-primary">Consolidated Session Recap</span>
-            <button
-              type="button"
-              onClick={handleCopySummary}
-              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-tiny font-semibold text-primary bg-primary-light hover:brightness-95 cursor-pointer"
-            >
-              <CopySimple size={12} />
-              {copied ? 'Copied!' : 'Copy Recap'}
-            </button>
-          </div>
-
-          <pre className="flex-1 overflow-y-auto scroll-slim whitespace-pre-wrap font-sans text-tiny text-ink leading-relaxed">
-            {clubbedSummary}
-          </pre>
-        </div>
+        <p className="flex-1 text-tiny text-ink-muted leading-relaxed">
+          Your captures were filed to the thread. Head back to continue working.
+        </p>
 
         <div className="mt-auto pt-2 border-t border-line">
           <Button size="sm" onClick={handleResetHome} className="w-full font-bold">

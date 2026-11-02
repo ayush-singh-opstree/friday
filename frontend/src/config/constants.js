@@ -20,6 +20,7 @@ export const STORAGE_KEYS = Object.freeze({
 /** Capture type vocabulary. */
 export const CAPTURE_TYPES = Object.freeze([
   { value: 'note', label: 'Note', icon: 'Note', chipClass: 'bg-[#EEF1FE] text-[#4F6AF5]' },
+  { value: 'follow_up', label: 'Follow-up', icon: 'ArrowUp', chipClass: 'bg-[#FFF3E0] text-[#E67E22]' },
   { value: 'commitment', label: 'Commitment', icon: 'Lightning', chipClass: 'bg-[#FFF3E0] text-[#E67E22]' },
   { value: 'decision', label: 'Decision', icon: 'Checks', chipClass: 'bg-[#E8F5E9] text-[#27AE60]' },
   { value: 'question', label: 'Question', icon: 'Question', chipClass: 'bg-[#FCE4EC] text-[#E91E63]' },

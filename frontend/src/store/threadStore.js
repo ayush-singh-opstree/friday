@@ -31,6 +31,8 @@ export const useThreadStore = create((set, get) => ({
   /** @type {any[]} */
   timeline: [],
   /** @type {any[]} */
+  clubs: [],
+  /** @type {any[]} */
   summaries: [],
   detailStatus: 'idle',
 
@@ -86,13 +88,31 @@ export const useThreadStore = create((set, get) => ({
         captures: [],
         commitments: [],
         timeline: [],
+        clubs: [],
         summaries: [],
         detailStatus: 'idle',
       })
       return null
     }
 
-    set({ selectedThreadId: threadId, detailStatus: 'loading' })
+    const switching = get().selectedThreadId !== threadId
+    set({
+      selectedThreadId: threadId,
+      detailStatus: 'loading',
+      error: null,
+      // Clear the previous thread's data the moment we switch, otherwise the old
+      // thread keeps rendering until the new fetch resolves (~1s stale flash).
+      ...(switching
+        ? {
+            thread: null,
+            captures: [],
+            commitments: [],
+            timeline: [],
+            clubs: [],
+            summaries: [],
+          }
+        : {}),
+    })
     try {
       const data = await threadsApi.detail(threadId)
       set({
@@ -100,6 +120,7 @@ export const useThreadStore = create((set, get) => ({
         captures: data?.captures ?? [],
         commitments: data?.commitments ?? [],
         timeline: data?.timeline ?? [],
+        clubs: data?.clubs ?? [],
         summaries: data?.summaries ?? [],
         detailStatus: 'ready',
       })

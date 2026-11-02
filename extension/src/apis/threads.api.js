@@ -8,6 +8,7 @@ import {
   threadListParams,
   toCapture,
   toCommitment,
+  toClubList,
   toList,
   toThread,
   toThreadCreatePayload,
@@ -70,14 +71,21 @@ export const threadsApi = {
     // Sub-resources are best-effort: if one fails (e.g. a legacy record the
     // server cannot serialise) the thread must still open instead of the whole
     // page erroring out.
-    const [threadResult, capturesResult, commitmentsResult, timelineResult, peopleResult] =
-      await Promise.allSettled([
-        http.get(ENDPOINTS.threads.detail(threadId)),
-        http.get(ENDPOINTS.captures.list(), { query: { thread_id: threadId, limit: 200 } }),
-        http.get(ENDPOINTS.commitments.list(), { query: { thread_id: threadId, limit: 200 } }),
-        http.get(ENDPOINTS.threads.timeline(threadId), { query: { limit: 200 } }),
-        http.get(ENDPOINTS.threads.people(threadId)),
-      ])
+    const [
+      threadResult,
+      capturesResult,
+      commitmentsResult,
+      timelineResult,
+      peopleResult,
+      clubsResult,
+    ] = await Promise.allSettled([
+      http.get(ENDPOINTS.threads.detail(threadId)),
+      http.get(ENDPOINTS.captures.list(), { query: { thread_id: threadId, limit: 200 } }),
+      http.get(ENDPOINTS.commitments.list(), { query: { thread_id: threadId, limit: 200 } }),
+      http.get(ENDPOINTS.threads.timeline(threadId), { query: { limit: 200 } }),
+      http.get(ENDPOINTS.threads.people(threadId)),
+      http.get(ENDPOINTS.threads.clubs(threadId), { query: { limit: 200 } }),
+    ])
 
     // The thread itself is required - only its failure should surface.
     if (threadResult.status === 'rejected') {
@@ -92,6 +100,7 @@ export const threadsApi = {
     const commitmentsPayload = settle(commitmentsResult)
     const timelinePayload = settle(timelineResult)
     const peopleLinks = settle(peopleResult, [])
+    const clubsPayload = settle(clubsResult)
 
     const thread = toThread(threadDto)
     const captures = toList(capturesPayload).rows.map(toCapture)
@@ -99,11 +108,12 @@ export const threadsApi = {
       toCommitment(row, thread?.title ?? null),
     )
     const timeline = (Array.isArray(timelinePayload) ? timelinePayload : []).map(toTimelineEvent)
+    const clubs = toClubList(clubsPayload)
     if (thread) {
       thread.people = toThreadPeople(peopleLinks)
       thread.openCommitmentCount = commitments.filter((row) => row.status === 'open').length
     }
-    return { thread, captures, commitments, timeline, summaries: [] }
+    return { thread, captures, commitments, timeline, clubs, summaries: [] }
   },
 
   /** @param {{ title: string, description?: string, personIds?: string[], goingColdThresholdDays?: number }} payload */

@@ -160,6 +160,36 @@ export function toThreadPeople(links) {
     }))
 }
 
+/** ClubResponse -> Club (a meeting / capture session under a thread). */
+export function toClub(dto) {
+  if (!dto) return null
+  return {
+    id: dto.id,
+    userId: dto.user_id ?? null,
+    threadId: dto.thread_id,
+    name: dto.name ?? null,
+    startedAt: dto.started_at,
+    endedAt: dto.ended_at ?? null,
+    source: dto.source ?? 'manual',
+    /** A club with no `ended_at` is still capturing. */
+    isActive: !dto.ended_at,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  }
+}
+
+/** ClubDetailResponse -> Club plus its grouped subthreads (captures). */
+export function toClubDetail(dto) {
+  const club = toClub(dto)
+  if (!club) return null
+  return { ...club, subthreads: (dto.subthreads ?? []).map(toCapture) }
+}
+
+/** ClubResponse[] -> Club[] (accepts a bare array or a `{ data }` envelope). */
+export function toClubList(payload) {
+  return toList(payload).rows.map(toClub).filter(Boolean)
+}
+
 /** CaptureResponse -> Capture */
 export function toCapture(dto) {
   if (!dto) return null
@@ -191,20 +221,28 @@ export function toCapture(dto) {
  */
 export function toCommitment(dto, threadTitle = null) {
   if (!dto) return null
+  // The backend commitment is now always tied to a person: it exposes `person_id`
+  // (not `owner_person_id`), `deadline` (not `due_date`), plus optional
+  // `club_id` / `subthread_id`.
+  const deadline = dto.deadline ?? dto.due_date ?? null
+  const personId = dto.person_id ?? dto.owner_person_id ?? null
+  const status = dto.status ?? 'open'
   return {
     id: dto.id,
     userId: dto.user_id ?? null,
     threadId: dto.thread_id,
-    captureId: dto.capture_id ?? null,
+    clubId: dto.club_id ?? null,
+    captureId: dto.subthread_id ?? dto.capture_id ?? null,
     description: dto.description,
-    ownerType: dto.owner_type ?? 'me',
-    ownerPersonId: dto.owner_person_id ?? null,
+    ownerType: dto.owner_type ?? (personId ? 'person' : 'me'),
+    ownerPersonId: personId,
     ownerPerson: null,
-    status: dto.status ?? 'open',
-    dueDate: dto.due_date ?? null,
+    status,
+    dueDate: deadline,
+    deadline,
     completedAt: dto.completed_at ?? null,
     completionNote: dto.completion_note ?? null,
-    urgency: commitmentUrgency(dto.due_date, dto.status ?? 'open'),
+    urgency: commitmentUrgency(deadline, status),
     threadTitle,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
@@ -389,9 +427,10 @@ export function toCommitmentPayload(commitment = {}) {
 export function toCommitmentUpdatePayload(patch = {}) {
   const map = {
     description: 'description',
-    ownerType: 'owner_type',
-    ownerPersonId: 'owner_person_id',
-    dueDate: 'due_date',
+    personId: 'person_id',
+    ownerPersonId: 'person_id',
+    deadline: 'deadline',
+    dueDate: 'deadline',
     status: 'status',
   }
   const payload = {}
@@ -411,13 +450,14 @@ export const COMMITMENT_OWNER_PARAMS = Object.freeze({
 
 /**
  * UI commitment filters -> Commitment list query params.
- * The backend understands thread_id / owner_type / status / overdue_only.
+ * The backend understands thread_id / club_id / status / overdue_only; the
+ * owner filter is applied client-side (commitments now always carry a person).
  */
-export function commitmentListParams({ threadId, status, owner, overdueOnly } = {}) {
+export function commitmentListParams({ threadId, clubId, status, overdueOnly } = {}) {
   const params = { limit: 200 }
   if (threadId) params.thread_id = threadId
+  if (clubId) params.club_id = clubId
   if (status) params.status = status
-  if (owner && COMMITMENT_OWNER_PARAMS[owner]) params.owner_type = COMMITMENT_OWNER_PARAMS[owner]
   if (overdueOnly) params.overdue_only = true
   return params
 }
