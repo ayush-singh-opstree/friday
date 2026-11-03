@@ -9,10 +9,25 @@ import {
 } from 'date-fns'
 import { URGENCY } from '@/config/constants'
 
+/**
+ * Timestamps that carry a time but no timezone designator are treated as UTC.
+ * The backend serialises naive UTC columns (e.g. "2026-11-03T06:30:00"), which
+ * `parseISO` would otherwise read as *local* time - making a just-created record
+ * look hours old in non-UTC zones such as IST. Strings that already carry a
+ * designator ("Z" / "+05:30") or a bare date ("2026-11-03") are left untouched.
+ */
+const NAIVE_DATETIME = /^[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}(:[0-9]{2})?([.][0-9]+)?$/
+
+function normaliseIso(value) {
+  const raw = String(value).trim()
+  return NAIVE_DATETIME.test(raw) ? `${raw.replace(' ', 'T')}Z` : raw
+}
+
 /** Coerce anything date-like into a valid Date, or null. */
 export function toDate(value) {
   if (!value) return null
-  const date = value instanceof Date ? value : parseISO(String(value))
+  if (value instanceof Date) return isValid(value) ? value : null
+  const date = parseISO(normaliseIso(value))
   return isValid(date) ? date : null
 }
 

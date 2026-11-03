@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { ArrowCounterClockwise, CopySimple, Robot, Warning } from '@/components/icons'
+import { ArrowCounterClockwise, CopySimple, Robot, Sparkle, Warning } from '@/components/icons'
 import { aiApi } from '@/apis'
 import { Can } from '@/authorization'
 import { CAPABILITIES } from '@/authorization/permissions'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
 import { EmptyState, Skeleton } from '@/components/ui/Feedback'
 import { relativeTime } from '@/lib/date'
+import { cn } from '@/lib/utils'
 import { useThreadStore, useUiStore } from '@/store'
 
 /**
@@ -86,6 +88,7 @@ export function BriefTab({ thread, summaries = [], captures = [], commitments = 
       <div className="flex flex-col gap-4">
         <BriefCard
           title="Where we left off"
+          description="A quick recap of your last interaction with this thread."
           summary={existing('where_we_left_off')}
           loading={busy === 'where_we_left_off'}
           showFallback={fallback === 'where_we_left_off'}
@@ -96,6 +99,7 @@ export function BriefTab({ thread, summaries = [], captures = [], commitments = 
 
         <BriefCard
           title="Pre-meeting brief"
+          description="Talking points and context for your next conversation."
           summary={existing('pre_meeting_brief')}
           loading={busy === 'pre_meeting_brief'}
           showFallback={fallback === 'pre_meeting_brief'}
@@ -112,7 +116,7 @@ export function BriefTab({ thread, summaries = [], captures = [], commitments = 
 function Section({ label, children }) {
   return (
     <div>
-      <h4 className="mb-1 text-tiny font-semibold tracking-[0.08em] text-ink-subtle uppercase">
+      <h4 className="mb-1.5 text-tiny font-semibold tracking-[0.08em] text-ink-subtle uppercase">
         {label}
       </h4>
       {children}
@@ -120,8 +124,32 @@ function Section({ label, children }) {
   )
 }
 
+const BULLET_TONES = {
+  primary: 'bg-primary/50',
+  warning: 'bg-warning/70',
+  success: 'bg-success/60',
+}
+
+/** Clean, flat bulleted list with a small tone-coloured marker. */
+function BulletList({ items, tone = 'primary' }) {
+  return (
+    <ul className="flex flex-col gap-1.5">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-2.5 text-small leading-relaxed text-ink">
+          <span
+            aria-hidden="true"
+            className={cn('mt-2 size-1.5 shrink-0 rounded-full', BULLET_TONES[tone])}
+          />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function BriefCard({
   title,
+  description,
   summary,
   loading,
   showFallback,
@@ -131,110 +159,131 @@ function BriefCard({
   withTalkingPoints = false,
 }) {
   const content = summary?.content
+  // Keep a single action per state: header shows Regenerate only once there is
+  // something to regenerate; the empty state owns the initial Generate CTA.
+  const showHeaderAction = Boolean(summary) || showFallback
 
   return (
-    <Card className="p-4">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 text-heading-3 text-ink">
-          <Robot size={15} weight="duotone" className="text-primary" />
-          {title}
-        </h3>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onRegenerate}
-            loading={loading}
-            aria-label={`Regenerate ${title}`}
-          >
-            <ArrowCounterClockwise size={13} />
-            Regenerate
-          </Button>
+    <Card className="overflow-hidden rounded-2xl border-line/80 p-0 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+            <Robot size={15} weight="duotone" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-heading-3 font-semibold tracking-tight text-ink">{title}</h3>
+            {description ? <p className="text-tiny text-ink-muted">{description}</p> : null}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
           {summary ? (
             <Button
               variant="ghost"
               size="sm"
+              className="h-7 gap-1.5 px-2 text-tiny"
               onClick={() => onCopy(summary)}
               aria-label={`Copy ${title}`}
             >
               <CopySimple size={13} />
+              <span className="hidden sm:inline">Copy</span>
+            </Button>
+          ) : null}
+          {showHeaderAction ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 px-2.5 text-tiny"
+              onClick={onRegenerate}
+              loading={loading}
+              aria-label={`Regenerate ${title}`}
+            >
+              <ArrowCounterClockwise size={13} />
+              Regenerate
             </Button>
           ) : null}
         </div>
       </div>
 
-      {loading && !content ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-11/12" />
-          <Skeleton className="h-3 w-3/4" />
-        </div>
-      ) : content ? (
-        <div className="flex flex-col gap-3">
-          {content.lastContactSummary ? (
-            <p className="text-body text-ink">{content.lastContactSummary}</p>
-          ) : null}
+      <div className="px-4 py-3.5">
+        {loading && !content ? (
+          <div className="flex flex-col gap-2.5">
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-11/12" />
+            <Skeleton className="h-3.5 w-3/4" />
+          </div>
+        ) : content ? (
+          <div className="flex flex-col gap-4">
+            {content.lastContactSummary ? (
+              <p className="text-body leading-relaxed text-ink">{content.lastContactSummary}</p>
+            ) : null}
 
-          {content.keyTopics?.length ? (
-            <Section label="Key topics">
-              <ul className="flex flex-wrap gap-1.5">
-                {content.keyTopics.map((topic) => (
-                  <li
-                    key={topic}
-                    className="rounded-full bg-overlay px-2.5 py-0.5 text-tiny text-ink-muted"
-                  >
-                    {topic}
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          ) : null}
+            {content.keyTopics?.length ? (
+              <Section label="Key topics">
+                <div className="flex flex-wrap gap-1.5">
+                  {content.keyTopics.map((topic) => (
+                    <Chip key={topic} tone="neutral">
+                      {topic}
+                    </Chip>
+                  ))}
+                </div>
+              </Section>
+            ) : null}
 
-          {content.openCommitments?.length ? (
-            <Section label="Open commitments">
-              <ul className="list-disc space-y-0.5 pl-4 text-small text-ink">
-                {content.openCommitments.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </Section>
-          ) : null}
+            {content.openCommitments?.length ? (
+              <Section label="Open commitments">
+                <BulletList items={content.openCommitments} tone="warning" />
+              </Section>
+            ) : null}
 
-          {withTalkingPoints && content.talkingPoints?.length ? (
-            <Section label="Talking points">
-              <ul className="list-disc space-y-0.5 pl-4 text-small text-ink">
-                {content.talkingPoints.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </Section>
-          ) : null}
+            {withTalkingPoints && content.talkingPoints?.length ? (
+              <Section label="Talking points">
+                <BulletList items={content.talkingPoints} tone="primary" />
+              </Section>
+            ) : null}
 
-          {content.nextSteps?.length ? (
-            <Section label="Next steps">
-              <ul className="list-disc space-y-0.5 pl-4 text-small text-ink">
-                {content.nextSteps.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </Section>
-          ) : null}
+            {content.nextSteps?.length ? (
+              <Section label="Next steps">
+                <BulletList items={content.nextSteps} tone="success" />
+              </Section>
+            ) : null}
 
-          <p className="text-tiny text-ink-subtle">
-            Generated {relativeTime(summary?.generatedAt)}
-            {summary?.sourceCaptures?.length
-              ? ` · based on ${summary.sourceCaptures.length} captures`
-              : ''}
-          </p>
-        </div>
-      ) : showFallback ? (
-        <CompiledFallback {...fallbackData} />
-      ) : (
-        <p className="text-small text-ink-muted">
-          No summary yet. Regenerate to build one from this thread&apos;s captures.
-        </p>
-      )}
+            <div className="flex items-center gap-1.5 border-t border-line/60 pt-3 text-tiny text-ink-subtle">
+              <Sparkle size={11} weight="fill" className="text-accent" />
+              <span>
+                Generated {relativeTime(summary?.generatedAt)}
+                {summary?.sourceCaptures?.length
+                  ? ` · based on ${summary.sourceCaptures.length} captures`
+                  : ''}
+              </span>
+            </div>
+          </div>
+        ) : showFallback ? (
+          <CompiledFallback {...fallbackData} />
+        ) : (
+          <EmptyBrief onGenerate={onRegenerate} loading={loading} />
+        )}
+      </div>
     </Card>
+  )
+}
+
+/** Friendly empty state with a one-tap generate action. */
+function EmptyBrief({ onGenerate, loading }) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line bg-card/50 px-4 py-7 text-center">
+      <span className="flex size-9 items-center justify-center rounded-full bg-overlay text-ink-subtle">
+        <Robot size={16} weight="duotone" />
+      </span>
+      <p className="text-small font-medium text-ink">Nothing generated yet</p>
+      <p className="max-w-xs text-tiny text-ink-subtle">
+        Build a brief from this thread&apos;s captures and commitments.
+      </p>
+      <Button size="sm" className="mt-1 gap-1.5" onClick={onGenerate} loading={loading}>
+        <Sparkle size={13} weight="fill" />
+        Generate
+      </Button>
+    </div>
   )
 }
 
@@ -247,9 +296,9 @@ function CompiledFallback({ captures = [], commitments = [] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="flex items-start gap-1.5 rounded-sm bg-warning/10 px-2.5 py-2 text-tiny text-[#8a5a06]">
+      <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-tiny text-[#8a5a06]">
         <Warning size={13} weight="bold" className="mt-0.5 shrink-0" />
-        AI generation is unavailable. Showing the compiled fallback.
+        <span>AI generation is unavailable. Showing the compiled fallback.</span>
       </p>
 
       <Section label="Recent context">

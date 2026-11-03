@@ -39,7 +39,8 @@ export function computeAttentionScore(thread, openCommitments = []) {
   if (!thread) return 0
 
   // Snoozed threads always score 0 until the snooze expires.
-  if (thread.snoozedUntil && new Date(thread.snoozedUntil) > new Date()) return 0
+  const snoozedUntil = toDate(thread.snoozedUntil)
+  if (snoozedUntil && snoozedUntil > new Date()) return 0
   if (thread.status === 'archived') return 0
 
   const pinBonus = thread.isPinned ? 15 : 0

@@ -9,7 +9,7 @@
  * shape difference is explicit and testable (see scripts/verify-api-adapters.mjs).
  */
 import { commitmentUrgency } from '@/lib/date'
-import { isGoingCold } from '@/lib/attention'
+import { isGoingCold, isSnoozed } from '@/lib/attention'
 
 /* ------------------------------------------------------------- primitives --- */
 
@@ -501,9 +501,7 @@ export function applyThreadFilter(threads, filter) {
   if (filter === 'goingCold') return threads.filter((thread) => isGoingCold(thread))
   // Snooze state is not exposed on ThreadResponse yet (Phase 1 backend work).
   if (filter === 'snoozed') {
-    return threads.filter(
-      (thread) => thread.snoozedUntil && new Date(thread.snoozedUntil) > new Date(),
-    )
+    return threads.filter((thread) => isSnoozed(thread))
   }
   return threads
 }

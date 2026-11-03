@@ -7,7 +7,7 @@
  * `{ data, total, limit, offset }`. Rather than leak that into stores and
  * components, everything is translated here (mirrors frontend/src/apis/adapters.js).
  */
-import { commitmentUrgency } from '@/lib/date'
+import { commitmentUrgency, toDate } from '@/lib/date'
 import { isGoingCold } from '@/lib/attention'
 
 /* ------------------------------------------------------------- primitives --- */
@@ -382,7 +382,7 @@ export function applyThreadFilter(threads, filter) {
   if (filter === 'goingCold') return threads.filter((thread) => isGoingCold(thread))
   if (filter === 'snoozed') {
     return threads.filter(
-      (thread) => thread.snoozedUntil && new Date(thread.snoozedUntil) > new Date(),
+      (thread) => thread.snoozedUntil && toDate(thread.snoozedUntil) > new Date(),
     )
   }
   return threads

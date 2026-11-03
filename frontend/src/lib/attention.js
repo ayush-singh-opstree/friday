@@ -9,7 +9,7 @@
  *   - fall back gracefully when the API is unavailable.
  */
 import { ATTENTION_BANDS, DEFAULT_GOING_COLD_DAYS, URGENCY } from '@/config/constants'
-import { commitmentUrgency, daysSince, daysUntil } from '@/lib/date'
+import { commitmentUrgency, daysSince, daysUntil, toDate } from '@/lib/date'
 import { clamp, pluralise } from '@/lib/utils'
 
 /** Band descriptor for a 0-100 score. */
@@ -24,14 +24,15 @@ export function attentionBand(score = 0) {
 /** True when a thread has crossed its going-cold threshold (Feature 10). */
 export function isGoingCold(thread) {
   if (!thread || thread.status === 'archived') return false
-  if (thread.snoozedUntil && new Date(thread.snoozedUntil) > new Date()) return false
+  if (isSnoozed(thread)) return false
   const threshold = thread.goingColdThresholdDays || DEFAULT_GOING_COLD_DAYS
   return daysSince(thread.lastInteractionAt) >= threshold
 }
 
 /** True while a snooze is still active (Feature 11). */
 export function isSnoozed(thread) {
-  return Boolean(thread?.snoozedUntil && new Date(thread.snoozedUntil) > new Date())
+  const until = toDate(thread?.snoozedUntil)
+  return Boolean(until && until > new Date())
 }
 
 /**

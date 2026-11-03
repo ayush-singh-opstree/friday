@@ -9,7 +9,7 @@
  *   VITE_API_BASE_URL  e.g. https://api.friday.app  (no trailing slash)
  *   VITE_APP_WEB_URL   public web app URL
  *   VITE_USE_MOCK_API  'true' | 'false' (defaults to true when no base URL)
- *   VITE_API_TIMEOUT_MS default 15000
+ *   VITE_API_TIMEOUT_MS default 20000
  *   VITE_REALTIME_URL  SSE endpoint for real-time updates
  *   VITE_VAPID_PUBLIC_KEY  Web Push public key
  *   VITE_AUTH_PROVIDER 'local' | 'clerk'
@@ -28,7 +28,12 @@ export const env = {
   /** Public web app URL, used for share links and deep links. */
   appWebUrl: (import.meta.env.VITE_APP_WEB_URL ?? 'https://friday.app').replace(/\/+$/, ''),
 
-  apiTimeoutMs: Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 15000),
+  /**
+   * Request timeout (ms). Kept generous so a slow AI response has time to land
+   * before the client aborts and falls back (e.g. Brain Dump triage over many
+   * lines), rather than dropping straight to the local heuristic fallback.
+   */
+  apiTimeoutMs: Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 20000),
 
   /** SSE endpoint; empty disables live updates. */
   realtimeUrl: (import.meta.env.VITE_REALTIME_URL ?? '').replace(/\/+$/, ''),

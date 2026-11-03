@@ -5,8 +5,10 @@ import {
   Check,
   GearSix,
   MagnifyingGlass,
+  Plus,
   Snowflake,
   Sparkle,
+  X,
 } from '@/components/icons'
 import { ProtectedView } from '@/authorization'
 import { Logo } from '@/components/common/Logo'
@@ -130,7 +132,7 @@ function SidePanelBody() {
 /** Browse the directory from the companion */
 function PeoplePanel() {
   const [query, setQuery] = useState('')
-  const { people, isLoading } = usePeople({ query })
+  const { people, createPerson, isLoading } = usePeople({ query })
 
   const directory = usePeopleStore((state) => state.people)
   const selectedPerson = usePeopleStore((state) => state.selectedPerson)
@@ -138,6 +140,32 @@ function PeoplePanel() {
   const personThreads = usePeopleStore((state) => state.selectedPersonThreads)
   const personCommitments = usePeopleStore((state) => state.selectedPersonCommitments)
   const selectPerson = usePeopleStore((state) => state.selectPerson)
+  const pushToast = useUiStore((state) => state.pushToast)
+
+  // Inline "new person" form, anchored to the search row.
+  const [showCreate, setShowCreate] = useState(false)
+  const [name, setName] = useState('')
+  const [organisation, setOrganisation] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const submitPerson = async (event) => {
+    event.preventDefault()
+    const fullName = name.trim()
+    if (!fullName || saving) return
+    setSaving(true)
+    try {
+      await createPerson({ fullName, organisation: organisation.trim() || null })
+      pushToast('Person added to your directory.', 'success')
+      setName('')
+      setOrganisation('')
+      setShowCreate(false)
+      setQuery('')
+    } catch (error) {
+      pushToast(error?.message ?? 'Could not add that person.', 'danger')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const list = people.length > 0 ? people : directory
   const openCommitments = personCommitments.filter((row) => row.status === 'open')
@@ -219,19 +247,85 @@ function PeoplePanel() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative">
-        <MagnifyingGlass
-          size={14}
-          className="absolute top-1/2 left-3 -translate-y-1/2 text-ink-subtle"
-        />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search directory…"
-          aria-label="Search people"
-          className="h-9 w-full rounded-xl border border-line bg-overlay pr-3 pl-8 text-small transition-all focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/12"
-        />
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <MagnifyingGlass
+            size={14}
+            className="absolute top-1/2 left-3 -translate-y-1/2 text-ink-subtle"
+          />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search directory..."
+            aria-label="Search people"
+            className="h-9 w-full rounded-xl border border-line bg-overlay pr-3 pl-8 text-small transition-all focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/12"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowCreate((open) => !open)}
+          aria-expanded={showCreate}
+          aria-label="New person"
+          title="New person"
+          className={cn(
+            'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-tiny font-semibold transition-all cursor-pointer active:scale-95',
+            showCreate
+              ? 'border-primary/40 bg-primary/10 text-primary'
+              : 'border-line bg-overlay text-ink-muted hover:border-primary/40 hover:bg-card hover:text-primary',
+          )}
+        >
+          <Plus size={14} weight="bold" />
+          New
+        </button>
       </div>
+
+      {showCreate ? (
+        <form
+          onSubmit={submitPerson}
+          className="flex flex-col gap-2 rounded-xl border border-primary/30 bg-primary-light/20 p-2.5"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-tiny font-bold text-primary">New person</span>
+            <button
+              type="button"
+              onClick={() => setShowCreate(false)}
+              className="cursor-pointer text-ink-subtle hover:text-ink"
+              aria-label="Close"
+            >
+              <X size={13} weight="bold" />
+            </button>
+          </div>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Full name"
+            aria-label="Full name"
+            autoFocus
+            maxLength={120}
+            className="h-9 w-full rounded-xl border border-line bg-card px-3 text-small text-ink transition-all placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/12"
+          />
+          <input
+            value={organisation}
+            onChange={(event) => setOrganisation(event.target.value)}
+            placeholder="Organisation (optional)"
+            aria-label="Organisation"
+            className="h-9 w-full rounded-xl border border-line bg-card px-3 text-small text-ink transition-all placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/12"
+          />
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCreate(false)}
+              className="h-8 cursor-pointer rounded-lg px-2.5 text-tiny font-medium text-ink-muted transition-colors hover:bg-overlay hover:text-ink"
+            >
+              Cancel
+            </button>
+            <Button type="submit" size="sm" disabled={!name.trim()} loading={saving} className="gap-1.5">
+              <Plus size={13} weight="bold" />
+              Add person
+            </Button>
+          </div>
+        </form>
+      ) : null}
 
       {isLoading && list.length === 0 ? (
         <div className="flex flex-col gap-1.5 py-1">
@@ -240,7 +334,14 @@ function PeoplePanel() {
           ))}
         </div>
       ) : list.length === 0 ? (
-        <EmptyState title="No people" description="Add people from the Friday web app." />
+        <EmptyState
+          title={query ? 'No matches' : 'No people yet'}
+          description={
+            query
+              ? 'Try a different name or organisation.'
+              : 'Tap New to add your first person.'
+          }
+        />
       ) : (
         <ul className="flex flex-col gap-1">
           {list.slice(0, 25).map((person) => (
