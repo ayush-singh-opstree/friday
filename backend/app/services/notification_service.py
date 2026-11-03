@@ -175,14 +175,14 @@ class NotificationService:
         if prefs.get("commitment_due", True):
             in_24h = now + timedelta(hours=24)
             due_soon = (
-                db.query(Commitment, Thread.title)
+                db.query(Commitment, Thread.agenda)
                 .join(Thread, Commitment.thread_id == Thread.id)
                 .filter(
                     Commitment.user_id == user_id,
                     Commitment.status == CommitmentStatus.open,
-                    Commitment.due_date.isnot(None),
-                    Commitment.due_date > now,
-                    Commitment.due_date <= in_24h,
+                    Commitment.deadline.isnot(None),
+                    Commitment.deadline > now,
+                    Commitment.deadline <= in_24h,
                 )
                 .all()
             )
