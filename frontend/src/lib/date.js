@@ -97,6 +97,23 @@ export function clockTime(value) {
   return date ? format(date, 'HH:mm') : '—'
 }
 
+/**
+ * Human duration between two instants, e.g. "under a minute", "45 min", "1h 10m".
+ * Returns null when either end is missing (e.g. a still-running session), so the
+ * caller can omit it instead of showing a bogus value.
+ */
+export function durationBetween(startValue, endValue) {
+  const start = toDate(startValue)
+  const end = toDate(endValue)
+  if (!start || !end) return null
+  const totalMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
+  if (totalMinutes < 1) return 'under a minute'
+  if (totalMinutes < 60) return `${totalMinutes} min`
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return minutes ? `${hours}h ${minutes}m` : `${hours}h`
+}
+
 /** Value for an <input type="date"> (yyyy-MM-dd). */
 export function toDateInputValue(value) {
   const date = toDate(value)

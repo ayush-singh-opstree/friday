@@ -27,7 +27,7 @@ import { EmptyState } from '@/components/ui/Feedback'
 import { Button } from '@/components/ui/Button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/Popover'
 import { CommitmentDialog } from '@/components/commitment/CommitmentDialog'
-import { clockTime, fullDate } from '@/lib/date'
+import { clockTime, durationBetween, fullDate } from '@/lib/date'
 import { useUiStore } from '@/store'
 import { cn } from '@/lib/utils'
 
@@ -829,9 +829,18 @@ function ClubTimelineBlock({
   // Each session gets a restrained accent so adjacent sessions remain easy to
   // distinguish without turning the timeline into a collection of colored cards.
   const palette = tone ?? SESSION_TONES[0]
+  const startEvent = events.find((event) => event.type === 'club_started')
+  const startedAt = club?.startedAt ?? startEvent?.occurredAt ?? null
   const endEvent = events.find((event) => event.type === 'club_ended')
   const endedAt = club?.endedAt ?? endEvent?.occurredAt ?? null
   const isActive = !endedAt
+  // Session timing: the clock window and, once closed, how long it ran.
+  const timeLabel = startedAt
+    ? endedAt
+      ? `${clockTime(startedAt)} – ${clockTime(endedAt)}`
+      : `Started ${clockTime(startedAt)}`
+    : null
+  const durationLabel = durationBetween(startedAt, endedAt)
 
   const handleDiscard = async () => {
     if (!club?.id) return
@@ -930,8 +939,29 @@ function ClubTimelineBlock({
               <UsersThree size={13} weight="bold" />
               Session
             </p>
-            <p className="mt-1 text-small text-ink-muted">
-              {captureCount} {captureCount === 1 ? 'capture' : 'captures'}
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-small text-ink-muted">
+              <span>
+                {captureCount} {captureCount === 1 ? 'capture' : 'captures'}
+              </span>
+              {timeLabel ? (
+                <>
+                  <span aria-hidden="true" className="text-ink-subtle">
+                    ·
+                  </span>
+                  <span className="inline-flex items-center gap-1 tabular-nums">
+                    <Clock size={12} weight="bold" className="text-ink-subtle" />
+                    {timeLabel}
+                  </span>
+                </>
+              ) : null}
+              {durationLabel ? (
+                <>
+                  <span aria-hidden="true" className="text-ink-subtle">
+                    ·
+                  </span>
+                  <span className="tabular-nums">{durationLabel}</span>
+                </>
+              ) : null}
             </p>
           </div>
           <div className="flex items-center gap-2">
