@@ -70,17 +70,15 @@ export function TodayPage() {
               <Brain size={14} weight="duotone" />
               Brain dump
             </Button>
-            {inboxCount > 0 ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={openInbox}
-                className="gap-1.5"
-              >
-                <Tray size={14} weight="duotone" />
-                Inbox · {inboxCount}
-              </Button>
-            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openInbox}
+              className="gap-1.5"
+            >
+              <Tray size={14} weight="duotone" />
+              {inboxCount > 0 ? `Inbox · ${inboxCount}` : 'Inbox'}
+            </Button>
             <Button size="sm" onClick={() => openQuickCapture(null)} className="gap-1.5 shadow-sm">
               <Plus size={14} weight="bold" />
               Quick capture

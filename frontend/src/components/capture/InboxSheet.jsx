@@ -113,8 +113,8 @@ export function InboxSheet({ open, onOpenChange }) {
           <div className="py-8">
             <EmptyState
               icon={<Tray size={32} weight="duotone" className="text-primary" />}
-              title="Your inbox is clear"
-              description="Every note, commitment, decision, and question has been assigned to a thread."
+              title="Your Inbox is empty"
+              description="Captures you save without a thread land here, ready to be filed. Nothing is waiting right now."
             />
           </div>
         ) : (
