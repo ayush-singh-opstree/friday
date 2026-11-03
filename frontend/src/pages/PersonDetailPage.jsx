@@ -4,7 +4,9 @@ import {
   ArrowLeft,
   Briefcase,
   Buildings,
+  ChatCircleDots,
   Check,
+  CheckSquare,
   Clock,
   CopySimple,
   EnvelopeSimple,
@@ -29,7 +31,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog'
-import { EmptyState, LoadingState } from '@/components/ui/Feedback'
+import { EmptyState, Skeleton } from '@/components/ui/Feedback'
+import { StaggerGroup, StaggerItem } from '@/components/ui'
 import { relativeTime } from '@/lib/date'
 import { usePeopleStore, useUiStore } from '@/store'
 
@@ -53,12 +56,37 @@ export function PersonDetailPage() {
   const [mergeOpen, setMergeOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [copiedEmail, setCopiedEmail] = useState(false)
+  const [loadedId, setLoadedId] = useState(null)
 
   useEffect(() => {
-    selectPerson(personId)
+    let active = true
+    Promise.resolve(selectPerson(personId)).finally(() => {
+      if (active) setLoadedId(personId)
+    })
+    return () => {
+      active = false
+    }
   }, [personId, selectPerson])
 
-  if (!person) return <LoadingState label="Opening profile…" />
+  if (loadedId !== personId) return <PersonDetailSkeleton />
+
+  if (!person) {
+    return (
+      <PageContainer>
+        <EmptyState
+          icon={<UsersThree size={24} weight="duotone" />}
+          title="Person not found"
+          description="This profile may have been removed or merged into another contact."
+          action={
+            <Button onClick={() => navigate('/people')}>
+              <ArrowLeft size={14} weight="bold" />
+              Back to directory
+            </Button>
+          }
+        />
+      </PageContainer>
+    )
+  }
 
   const openCommitments = commitments.filter((row) => row.status === 'open')
   const completedCommitments = commitments.filter((row) => row.status === 'completed')
@@ -76,234 +104,229 @@ export function PersonDetailPage() {
 
   return (
     <PageContainer>
-      {/* Streamlined Hero Header Card with Integrated Back Button */}
-      <div className="mb-5 rounded-2xl border border-line/80 bg-card p-4 sm:p-5 shadow-xs">
-        {/* Top Bar: Back Button on Left, Actions on Right */}
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => navigate('/people')}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-tiny font-medium text-ink-muted transition-colors hover:bg-overlay hover:text-ink cursor-pointer"
-          >
-            <ArrowLeft size={13} weight="bold" />
-            <span>Directory</span>
-          </button>
+      {/* Top row: hero + personal notes */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        {/* Hero: identity, quick actions, and contact details */}
+        <div className="tw-rise w-full lg:w-2/3 lg:shrink-0 xl:w-[56rem]">
+          <div className="max-w-4xl rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3.5">
+                <Avatar
+                  name={person.fullName}
+                  size="lg"
+                  className="size-13 sm:size-14 text-heading-3 ring-2 ring-primary/20 shrink-0"
+                />
 
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setEditOpen(true)}
-              className="h-8 gap-1.5 px-2.5 text-tiny font-medium"
-            >
-              <NotePencil size={13} />
-              <span>Edit details</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setMergeOpen(true)}
-              className="h-8 gap-1.5 px-2.5 text-tiny font-medium"
-            >
-              <UsersThree size={13} />
-              <span>Merge</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 px-2 text-tiny font-medium text-danger hover:bg-danger/10 hover:text-danger"
-              onClick={() => setConfirmDelete(true)}
-              title="Delete person"
-            >
-              <Trash size={13} />
-            </Button>
-          </div>
-        </div>
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate text-heading-2 font-bold text-ink sm:text-heading-1">
+                    {person.fullName}
+                  </h1>
 
-        {/* Profile Details Block */}
-        <div className="flex items-start gap-4">
-          <Avatar
-            name={person.fullName}
-            size="lg"
-            className="size-13 sm:size-14 text-heading-3 ring-2 ring-primary/20 shrink-0"
-          />
+                  {/* Role & Organisation */}
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-ink-muted">
+                    {person.role ? (
+                      <span className="inline-flex items-center gap-1 font-medium text-ink">
+                        <Briefcase size={13} className="text-ink-subtle" />
+                        {person.role}
+                      </span>
+                    ) : null}
+                    {person.role && person.organisation ? <span className="text-line">·</span> : null}
+                    {person.organisation ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Buildings size={13} className="text-ink-subtle" />
+                        {person.organisation}
+                      </span>
+                    ) : null}
+                  </div>
 
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-heading-2 font-bold text-ink sm:text-heading-1">
-              {person.fullName}
-            </h1>
+                  {/* Inline contact strip: email, phone, LinkedIn */}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-small">
+                    {person.email ? (
+                      <div className="inline-flex items-center gap-1.5">
+                        <EnvelopeSimple size={13} className="text-primary shrink-0" />
+                        <a
+                          href={`mailto:${person.email}`}
+                          className="font-medium text-ink hover:text-primary hover:underline"
+                        >
+                          {person.email}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => copyEmail(person.email)}
+                          title="Copy email"
+                          className="inline-flex size-5 items-center justify-center rounded text-ink-subtle hover:bg-overlay hover:text-ink transition-colors"
+                        >
+                          {copiedEmail ? (
+                            <Check size={11} className="text-emerald-500" />
+                          ) : (
+                            <CopySimple size={11} />
+                          )}
+                        </button>
+                      </div>
+                    ) : null}
 
-            {/* Role & Organisation */}
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-ink-muted">
-              {person.role ? (
-                <span className="inline-flex items-center gap-1 font-medium text-ink">
-                  <Briefcase size={13} className="text-ink-subtle" />
-                  {person.role}
-                </span>
-              ) : null}
-              {person.role && person.organisation ? <span className="text-line">·</span> : null}
-              {person.organisation ? (
-                <span className="inline-flex items-center gap-1">
-                  <Buildings size={13} className="text-ink-subtle" />
-                  {person.organisation}
-                </span>
-              ) : null}
+                    {person.phone ? (
+                      <div className="inline-flex items-center gap-1.5">
+                        <Phone size={13} className="text-ink-subtle shrink-0" />
+                        <a
+                          href={`tel:${person.phone}`}
+                          className="font-medium text-ink hover:text-primary hover:underline"
+                        >
+                          {person.phone}
+                        </a>
+                      </div>
+                    ) : null}
+
+                    {person.linkedInUrl ? (
+                      <div className="inline-flex items-center gap-1.5">
+                        <LinkedinLogo size={13} className="text-[#0077b5] shrink-0" />
+                        <a
+                          href={person.linkedInUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-medium text-primary hover:underline"
+                        >
+                          LinkedIn
+                        </a>
+                      </div>
+                    ) : null}
+
+                    {person.lastInteractionAt ? (
+                      <span className="inline-flex items-center gap-1 text-tiny text-ink-subtle ml-auto">
+                        <Clock size={11} />
+                        Active {relativeTime(person.lastInteractionAt)}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions + quick metrics */}
+              <div className="flex shrink-0 flex-col gap-2.5 sm:items-end">
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditOpen(true)}
+                    className="h-8 gap-1.5 px-2.5 text-tiny font-medium"
+                  >
+                    <NotePencil size={13} />
+                    <span className="hidden sm:inline">Edit details</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setMergeOpen(true)}
+                    className="h-8 gap-1.5 px-2.5 text-tiny font-medium"
+                    title="Merge with another person"
+                  >
+                    <UsersThree size={13} />
+                    <span className="hidden sm:inline">Merge</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2 text-tiny font-medium text-danger hover:bg-danger/10 hover:text-danger"
+                    onClick={() => setConfirmDelete(true)}
+                    title="Delete person"
+                  >
+                    <Trash size={13} />
+                  </Button>
+                </div>
+
+                <div className="flex flex-col gap-1 sm:items-end">
+                  <span className="flex items-baseline gap-1.5 text-tiny">
+                    <span className="font-semibold text-ink-subtle uppercase tracking-wider">
+                      Commitments
+                    </span>
+                    <span className="font-bold text-emerald-600">
+                      {completedCommitments.length} completed
+                    </span>
+                  </span>
+                </div>
+              </div>
             </div>
-
-            {/* Inline Contact Strip: Email, Phone, LinkedIn */}
-            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-small">
-              {person.email ? (
-                <div className="inline-flex items-center gap-1.5">
-                  <EnvelopeSimple size={13} className="text-primary shrink-0" />
-                  <a
-                    href={`mailto:${person.email}`}
-                    className="font-medium text-ink hover:text-primary hover:underline"
-                  >
-                    {person.email}
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => copyEmail(person.email)}
-                    title="Copy email"
-                    className="inline-flex size-5 items-center justify-center rounded text-ink-subtle hover:bg-overlay hover:text-ink transition-colors"
-                  >
-                    {copiedEmail ? (
-                      <Check size={11} className="text-emerald-500" />
-                    ) : (
-                      <CopySimple size={11} />
-                    )}
-                  </button>
-                </div>
-              ) : null}
-
-              {person.phone ? (
-                <div className="inline-flex items-center gap-1.5">
-                  <Phone size={13} className="text-ink-subtle shrink-0" />
-                  <a
-                    href={`tel:${person.phone}`}
-                    className="font-medium text-ink hover:text-primary hover:underline"
-                  >
-                    {person.phone}
-                  </a>
-                </div>
-              ) : null}
-
-              {person.linkedInUrl ? (
-                <div className="inline-flex items-center gap-1.5">
-                  <LinkedinLogo size={13} className="text-[#0077b5] shrink-0" />
-                  <a
-                    href={person.linkedInUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-medium text-primary hover:underline"
-                  >
-                    LinkedIn Profile
-                  </a>
-                </div>
-              ) : null}
-
-              {person.lastInteractionAt ? (
-                <span className="inline-flex items-center gap-1 text-tiny text-ink-subtle ml-auto">
-                  <Clock size={11} />
-                  Active {relativeTime(person.lastInteractionAt)}
-                </span>
-              ) : null}
-            </div>
           </div>
         </div>
 
-        {/* Compact Quick Metrics Bar */}
-        <div className="mt-4.5 grid grid-cols-2 gap-3 border-t border-line/70 pt-3.5 sm:grid-cols-4">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold text-ink-subtle uppercase tracking-wider">
-              Threads
-            </span>
-            <span className="mt-0.5 text-heading-3 font-bold text-ink">{threads.length}</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold text-ink-subtle uppercase tracking-wider">
-              Open Commitments
-            </span>
-            <span className="mt-0.5 text-heading-3 font-bold text-primary">
-              {openCommitments.length}
-            </span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold text-ink-subtle uppercase tracking-wider">
-              Completed
-            </span>
-            <span className="mt-0.5 text-heading-3 font-bold text-emerald-600">
-              {completedCommitments.length}
-            </span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold text-ink-subtle uppercase tracking-wider">
-              Relationship Status
-            </span>
-            <span className="mt-0.5 text-small font-medium text-ink">Active relationship</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main 2-Column Responsive Grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-        {/* Left Column: Personal Notes */}
-        <div className="flex flex-col gap-6 lg:col-span-5 xl:col-span-4">
+        {/* Personal notes (right) */}
+        <div className="tw-rise w-full lg:flex-1" style={{ animationDelay: '70ms' }}>
           <Card className="rounded-2xl border-line/80 p-5 shadow-xs">
-            <div className="flex items-center justify-between pb-2.5 border-b border-line/60">
-              <h2 className="text-tiny font-semibold tracking-wider text-ink-subtle uppercase">
-                Personal Notes
-              </h2>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                  <NotePencil size={15} weight="bold" />
+                </span>
+                <h2 className="text-heading-3 font-semibold tracking-tight text-ink">Personal notes</h2>
+              </div>
               <button
                 type="button"
                 onClick={() => setEditOpen(true)}
-                className="text-tiny font-semibold text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 rounded-full border border-line/80 bg-surface/80 px-2.5 py-1 text-tiny font-medium text-ink-muted transition-all duration-150 hover:border-primary/40 hover:bg-card hover:text-primary hover:shadow-xs active:scale-95"
               >
-                Edit
+                <NotePencil size={11} weight="bold" />
+                <span>Edit</span>
               </button>
             </div>
-            <div className="pt-3">
-              {person.notes ? (
-                <div className="rounded-xl bg-overlay/60 p-3.5 border border-line/60">
-                  <p className="whitespace-pre-line text-small leading-relaxed text-ink">
-                    {person.notes}
-                  </p>
-                </div>
-              ) : (
-                <p className="py-4 text-center text-small text-ink-subtle">
-                  No personal notes yet. Add details about preferences, quirks, or background.
+
+            {person.notes ? (
+              <div className="rounded-xl border border-line/60 bg-overlay/40 p-3.5">
+                <p className="whitespace-pre-line text-small leading-relaxed text-ink">{person.notes}</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line bg-card/50 px-4 py-7 text-center">
+                <span className="flex size-9 items-center justify-center rounded-full bg-overlay text-ink-subtle">
+                  <NotePencil size={16} />
+                </span>
+                <p className="text-small font-medium text-ink">No notes yet</p>
+                <p className="max-w-[15rem] text-tiny text-ink-subtle">
+                  Capture preferences, quirks, or background worth remembering.
                 </p>
-              )}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(true)}
+                  className="mt-1 inline-flex items-center gap-1.5 text-tiny font-semibold text-primary hover:underline"
+                >
+                  <NotePencil size={11} weight="bold" />
+                  Add a note
+                </button>
+              </div>
+            )}
           </Card>
         </div>
+      </div>
 
-        {/* Right Column: Associated Threads & Commitments */}
-        <div className="flex flex-col gap-6 lg:col-span-7 xl:col-span-8">
-          {/* Associated Threads */}
-          <section>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-heading-3 font-semibold text-ink">
-                Threads <span className="ml-1 text-ink-muted font-normal">({threads.length})</span>
-              </h2>
-            </div>
+      {/* Below: threads + commitments */}
+      <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        {/* Associated Threads */}
+        <section className="tw-rise" style={{ animationDelay: '120ms' }}>
+          <div className="mb-3 flex items-center gap-2.5">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <ChatCircleDots size={14} weight="bold" />
+            </span>
+            <h2 className="text-heading-3 font-semibold tracking-tight text-ink">Threads</h2>
+            <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-tiny font-bold text-primary">
+              {threads.length}
+            </span>
+          </div>
 
-            {threads.length === 0 ? (
-              <EmptyState
-                title="No threads associated yet"
-                description="Link this person when creating a thread, or add them from within a thread's People tab."
-              />
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {threads.map((thread) => (
+          {threads.length === 0 ? (
+            <EmptyState
+              icon={<ChatCircleDots size={22} weight="duotone" />}
+              title="No threads yet"
+              description="Link this person to a thread to start tracking the relationship here."
+            />
+          ) : (
+            <StaggerGroup as="ul" className="flex flex-col gap-3">
+              {threads.map((thread) => (
+                <StaggerItem as="li" key={thread.id}>
                   <Link
-                    key={thread.id}
                     to={`/threads/${thread.id}`}
-                    className="group flex flex-col justify-between rounded-2xl border border-line/80 bg-card p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                    className="group flex h-full flex-col justify-between rounded-2xl border border-line/80 bg-card p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="truncate text-body-medium font-semibold text-ink group-hover:text-primary transition-colors">
+                        <h3 className="truncate text-body-medium font-semibold text-ink transition-colors group-hover:text-primary">
                           {thread.title}
                         </h3>
                         <AttentionScoreBadge score={thread.attentionScore ?? 0} />
@@ -313,44 +336,59 @@ export function PersonDetailPage() {
                       </p>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between border-t border-line/50 pt-2.5 text-tiny text-ink-subtle">
-                      <span>Active {relativeTime(thread.lastInteractionAt)}</span>
+                    <div className="mt-4 flex items-center justify-between gap-2 border-t border-line/50 pt-2.5">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-overlay/70 px-1.5 py-0.5 text-tiny font-medium text-ink-muted">
+                        <Clock size={11} weight="bold" className="text-ink-subtle" />
+                        Active {relativeTime(thread.lastInteractionAt)}
+                      </span>
                       {thread.openCommitmentCount > 0 ? (
-                        <span className="font-semibold text-primary">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-tiny font-semibold text-primary">
+                          <CheckSquare size={11} weight="bold" />
                           {thread.openCommitmentCount} open
                         </span>
                       ) : null}
                     </div>
                   </Link>
-                ))}
-              </div>
-            )}
-          </section>
+                </StaggerItem>
+              ))}
+            </StaggerGroup>
+          )}
+        </section>
 
-          {/* Open Commitments */}
-          <section>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-heading-3 font-semibold text-ink">
-                Open Commitments{' '}
-                <span className="ml-1 text-ink-muted font-normal">({openCommitments.length})</span>
-              </h2>
-            </div>
+        {/* Open Commitments */}
+        <section className="tw-rise" style={{ animationDelay: '160ms' }}>
+          <div className="mb-3 flex items-center gap-2.5">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+              <CheckSquare size={14} weight="bold" />
+            </span>
+            <h2 className="text-heading-3 font-semibold tracking-tight text-ink">Open commitments</h2>
+            <span className="inline-flex size-5 items-center justify-center rounded-full bg-emerald-500/10 text-tiny font-bold text-emerald-600">
+              {openCommitments.length}
+            </span>
+            <span className="text-tiny font-medium text-ink-subtle">
+              {completedCommitments.length} completed
+            </span>
+          </div>
 
-            {openCommitments.length === 0 ? (
-              <div className="flex items-center justify-center rounded-2xl border border-line/60 bg-card/60 p-8 text-center shadow-xs">
-                <p className="text-small text-ink-muted">
-                  No open commitments with {person.fullName}. All caught up!
-                </p>
-              </div>
-            ) : (
-              <Card className="divide-y divide-line/60 overflow-hidden rounded-2xl border-line/80 p-0 shadow-xs">
-                {openCommitments.map((commitment) => (
-                  <CommitmentRow key={commitment.id} commitment={commitment} showThread={true} />
-                ))}
-              </Card>
-            )}
-          </section>
-        </div>
+          {openCommitments.length === 0 ? (
+            <EmptyState
+              icon={<Check size={22} weight="bold" />}
+              title="All caught up"
+              description={`No open commitments with ${person.fullName}.`}
+            />
+          ) : (
+            <StaggerGroup
+              as="div"
+              className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line/80 bg-card shadow-xs"
+            >
+              {openCommitments.map((commitment) => (
+                <StaggerItem key={commitment.id}>
+                  <CommitmentRow commitment={commitment} showThread={true} />
+                </StaggerItem>
+              ))}
+            </StaggerGroup>
+          )}
+        </section>
       </div>
 
       <PersonDialog open={editOpen} onOpenChange={setEditOpen} person={person} />
@@ -386,6 +424,97 @@ export function PersonDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </PageContainer>
+  )
+}
+
+function PersonDetailSkeleton() {
+  return (
+    <PageContainer>
+      <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
+        <span className="sr-only">Loading profile</span>
+
+        {/* Top row: hero + notes */}
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="w-full lg:w-2/3 lg:shrink-0 xl:w-[56rem]">
+            <div className="max-w-4xl rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3.5">
+                  <Skeleton className="size-13 shrink-0 rounded-full sm:size-14" />
+                  <div className="min-w-0 flex-1">
+                    <Skeleton className="h-6 w-52" />
+                    <Skeleton className="mt-2 h-3.5 w-40" />
+                    <div className="mt-2 flex flex-wrap gap-3">
+                      <Skeleton className="h-4 w-44" />
+                      <Skeleton className="h-4 w-28" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-col gap-2.5 sm:items-end">
+                  <div className="flex items-center gap-1.5">
+                    <Skeleton className="h-8 w-24 rounded-lg" />
+                    <Skeleton className="h-8 w-16 rounded-lg" />
+                  </div>
+                  <div className="flex flex-col gap-1.5 sm:items-end">
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full lg:flex-1">
+            <div className="rounded-2xl border border-line/80 bg-card p-5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-6 w-16 rounded-full" />
+              </div>
+              <div className="mt-4 flex flex-col gap-2.5">
+                <Skeleton className="h-3.5 w-full" />
+                <Skeleton className="h-3.5 w-11/12" />
+                <Skeleton className="h-3.5 w-4/5" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Below: threads + commitments */}
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+          <div>
+            <Skeleton className="mb-3 h-5 w-24" />
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-line/80 bg-card p-4 shadow-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <Skeleton className="h-4 w-3/5" />
+                    <Skeleton className="size-7 shrink-0 rounded-full" />
+                  </div>
+                  <Skeleton className="mt-2 h-3 w-4/5" />
+                  <div className="mt-4 flex items-center justify-between border-t border-line/50 pt-2.5">
+                    <Skeleton className="h-5 w-24 rounded-md" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Skeleton className="mb-3 h-5 w-40" />
+            <div className="overflow-hidden rounded-2xl border border-line/80 bg-card shadow-xs">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-start gap-3 border-b border-line/60 px-4 py-3.5 last:border-b-0">
+                  <Skeleton className="mt-0.5 size-6 shrink-0 rounded-full" />
+                  <div className="min-w-0 flex-1">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="mt-2 h-3 w-40" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </PageContainer>
   )
 }
