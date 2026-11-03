@@ -6,8 +6,8 @@ Rich hackathon demo dataset:
 - Directory: 13 contacts (fintech, investors, partners, vendors, counsel, candidate)
 - Threads: 9 relationship threads (deals, partnerships, legal, hiring)
 - Sessions (Clubs): 12 capture sessions grouped under threads (2 live/in-progress)
-- Captures: 34 notes / follow-ups / questions / decisions (most inside sessions)
-- Commitments: 21 tracked commitments (me + person owners, mixed due dates)
+- Captures: 35 notes / follow-ups / questions / decisions (most inside sessions)
+- Commitments: 32 tracked commitments (15 mine + 17 theirs, mixed due dates)
 - ThreadPerson links + Timeline events
 - Recomputes Attention scores on exit
 
@@ -431,6 +431,29 @@ def seed():
             # Hiring
             {"tkey": "hiring", "desc": "Schedule final round for Naina", "owner_type": CommitmentOwnerType.me,
              "owner_person": None, "due_in_days": 0, "session": "hiring_portfolio"},
+            # ── Theirs: promises OTHERS made to me (owner_type = person) ──
+            {"tkey": "fintech", "desc": "Aditya to send the updated compliance checklist", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "aditya", "due_in_days": 5, "session": "fintech_kickoff"},
+            {"tkey": "fintech", "desc": "Tanya to return the signed vendor onboarding forms", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "tanya", "due_in_days": 3, "session": "fintech_kickoff"},
+            {"tkey": "investor_z", "desc": "Rahul to confirm the partner meeting date", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "rahul", "due_in_days": 1, "session": "investor_metrics"},
+            {"tkey": "startup_y", "desc": "Kavya to share the partnership term-sheet draft", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "kavya", "due_in_days": 6, "session": None},
+            {"tkey": "design_partner", "desc": "Priya to finalize the design-token review notes", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "priya", "due_in_days": 2, "session": "design_review3"},
+            {"tkey": "design_partner", "desc": "Sara to share the updated component inventory", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "sara", "due_in_days": -1, "session": "design_live"},
+            {"tkey": "agency", "desc": "Rohit to send the revised landing page copy", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "rohit", "due_in_days": 4, "session": "agency_handoff"},
+            {"tkey": "brightwave", "desc": "Arjun to share BrightWave's security requirements", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "arjun", "due_in_days": -3, "session": "brightwave_intro"},
+            {"tkey": "cloudpeak", "desc": "Daniel to confirm the co-marketing webinar slot", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "daniel", "due_in_days": 5, "session": "cloudpeak_discovery"},
+            {"tkey": "hiring", "desc": "Naina to complete the systems-design exercise", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "naina", "due_in_days": 7, "session": "hiring_portfolio"},
+            {"tkey": "legal", "desc": "Megha to confirm the revised MSA redlines", "owner_type": CommitmentOwnerType.person,
+             "owner_person": "megha", "due_in_days": 2, "session": "legal_msa"},
         ]
 
         commitments_map: list[Commitment] = []

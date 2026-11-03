@@ -14,7 +14,6 @@ import {
   PushPin,
   ShieldCheck,
   SignOut,
-  Sparkle,
   Sun,
   UserCircle,
 } from '@/components/icons'
@@ -28,7 +27,7 @@ import { Card, SectionHeader } from '@/components/ui/Card'
 import { Field, SwitchRow } from '@/components/ui/Controls'
 import { SelectMenu } from '@/components/ui/SelectMenu'
 import { APP, SETTINGS_SECTIONS } from '@/config/app'
-import { CAPTURE_TYPES, DEFAULT_SETTINGS, THREAD_SORTS } from '@/config/constants'
+import { DEFAULT_SETTINGS, THREAD_SORTS } from '@/config/constants'
 import { dataSource, pushEnabled as pushConfigured } from '@/config/env'
 import { useNotificationStore, useUiStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -330,54 +329,22 @@ function NotificationsSection() {
 }
 
 function CaptureSection() {
-  const settings = useUiStore((state) => state.settings)
-  const updateSettings = useUiStore((state) => state.updateSettings)
-
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      <Pane
-        title="Capture Preferences"
-        description="Quick Capture preselects this type for rapid notes. Smart detection reads action verbs and dates to suggest commitments."
-      >
-        <Field label="Default capture entry type">
-          <SelectMenu
-            value={settings.defaultCaptureType}
-            onChange={(val) => updateSettings({ defaultCaptureType: val })}
-            options={CAPTURE_TYPES}
-          />
-        </Field>
-        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary-light/60 px-3.5 py-3">
-          <Sparkle size={15} weight="fill" className="mt-0.5 shrink-0 text-primary" />
-          <p className="text-small text-ink">
-            Capture anything and Smart detection suggests the type, the thread and any commitment
-            for you.
-          </p>
-        </div>
-      </Pane>
-
-      <Pane
-        title="Editor & Shortcuts"
-        description="Shortcuts that work anywhere in Friday while you are capturing or searching."
-      >
-        <SwitchRow
-          id="shortcuts-enabled"
-          label="Keyboard shortcuts"
-          description="Enable global shortcuts for capture, search and saving."
-          checked={Boolean(settings.keyboardShortcutsEnabled)}
-          onCheckedChange={(value) => updateSettings({ keyboardShortcutsEnabled: value })}
-        />
-        <ul className="mt-2 flex flex-col divide-y divide-line/70">
-          {SHORTCUTS.map((row) => (
-            <li key={row.keys} className="flex items-center justify-between gap-4 py-2.5">
-              <span className="text-small text-ink-muted">{row.action}</span>
-              <kbd className="shrink-0 rounded-md border border-line bg-overlay px-2 py-0.5 font-mono text-[11px] text-ink">
-                {row.keys}
-              </kbd>
-            </li>
-          ))}
-        </ul>
-      </Pane>
-    </div>
+    <Pane
+      title="Editor & Shortcuts"
+      description="Shortcuts that work anywhere in Friday while you are capturing or searching."
+    >
+      <ul className="flex flex-col divide-y divide-line/70">
+        {SHORTCUTS.map((row) => (
+          <li key={row.keys} className="flex items-center justify-between gap-4 py-2.5">
+            <span className="text-small text-ink-muted">{row.action}</span>
+            <kbd className="shrink-0 rounded-md border border-line bg-overlay px-2 py-0.5 font-mono text-[11px] text-ink">
+              {row.keys}
+            </kbd>
+          </li>
+        ))}
+      </ul>
+    </Pane>
   )
 }
 

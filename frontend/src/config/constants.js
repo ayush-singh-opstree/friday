@@ -130,7 +130,6 @@ export const NOTIFICATION_TYPE_MAP = Object.freeze(
 /** Default user preferences. */
 export const DEFAULT_SETTINGS = Object.freeze({
   theme: 'system',
-  defaultCaptureType: 'note',
   defaultThreadSort: DEFAULT_THREAD_SORT,
   goingColdThresholdDays: DEFAULT_GOING_COLD_DAYS,
   digestTime: '08:00',
@@ -138,7 +137,6 @@ export const DEFAULT_SETTINGS = Object.freeze({
   emailDigestEnabled: false,
   doNotDisturb: false,
   pushEnabled: false,
-  keyboardShortcutsEnabled: true,
   /**
    * Sidebar preference: 'auto' (narrow icon rail on laptops/tablets, labelled on
    * desktop) | 'expanded' | 'collapsed'. Persisted so the choice is remembered.

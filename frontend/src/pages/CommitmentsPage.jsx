@@ -40,6 +40,14 @@ const VIEW_OPTIONS = [
   { value: 'completed', label: 'Completed' },
 ]
 
+// Owner filter: lets the user focus on their own promises ("Mine"), what others
+// owe them ("Theirs"), or everything overdue. Mirrors the store's ownerFilter.
+const OWNER_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'mine', label: 'Mine' },
+  { value: 'theirs', label: 'Theirs' },
+]
+
 
 const GROUP_ORDER = ['overdue', 'today', 'this_week', 'later', 'no_date', 'completed']
 
@@ -84,8 +92,10 @@ export function CommitmentsPage() {
     commitments,
     isLoading,
     error,
+    ownerFilter,
     groupBy,
     showCompleted,
+    setOwnerFilter,
     setGroupBy,
     toggleShowCompleted,
     complete,
@@ -111,9 +121,16 @@ export function CommitmentsPage() {
   }, [viewBucket, showCompleted, toggleShowCompleted])
 
   const visibleCommitments = useMemo(() => {
-    if (viewBucket === 'all') return commitments
-    return commitments.filter((row) => dueBucket(row.dueDate, row.status) === viewBucket)
-  }, [commitments, viewBucket])
+    let rows = commitments
+    if (ownerFilter === 'mine') rows = rows.filter((row) => row.ownerType !== 'person')
+    else if (ownerFilter === 'theirs') rows = rows.filter((row) => row.ownerType === 'person')
+    else if (ownerFilter === 'overdue') {
+      rows = rows.filter((row) => commitmentStatusMeta(row.dueDate, row.status).key === 'overdue')
+    }
+
+    if (viewBucket === 'all') return rows
+    return rows.filter((row) => dueBucket(row.dueDate, row.status) === viewBucket)
+  }, [commitments, viewBucket, ownerFilter])
 
   const isGroupOpen = (key) => openGroups[key] ?? (key === 'overdue' || key === viewBucket)
   const toggleGroup = (key) =>
@@ -295,6 +312,20 @@ export function CommitmentsPage() {
               value={viewBucket}
               onChange={(value) => {
                 setViewBucket(value)
+                setOpenGroups({})
+              }}
+              size="sm"
+            />
+          </div>
+
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="hidden shrink-0 px-1 text-tiny font-semibold tracking-[0.08em] text-ink-subtle uppercase sm:inline">Owner</span>
+            <FilterPills
+              label="Filter commitments by owner"
+              options={OWNER_FILTERS}
+              value={ownerFilter}
+              onChange={(value) => {
+                setOwnerFilter(value)
                 setOpenGroups({})
               }}
               size="sm"
