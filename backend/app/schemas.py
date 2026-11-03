@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models import (
     CaptureSource,
     CaptureStatus,
+    CommitmentOwnerType,
     CommitmentStatus,
     NotificationType,
     SnoozeTargetType,
@@ -26,7 +27,7 @@ CaptureType = SubThreadType
 __all__ = [
     "ThreadStatus", "SubThreadType", "CaptureType", "CaptureSource", "CaptureStatus",
     "CommitmentStatus", "TimelineEventType", "SummaryType", "SnoozeTargetType",
-    "NotificationType",
+    "NotificationType", "CommitmentOwnerType",
     # User
     "UserResponse",
     # Thread
@@ -266,10 +267,15 @@ class ClubDetailResponse(ClubResponse):
 
 class CommitmentCreate(_Base):
     thread_id: str = Field(..., description="Under which thread I committed this commitment")
-    person_id: str = Field(..., description="Whom I committed something to (required)")
+    person_id: Optional[str] = Field(
+        None, description="Whom I committed something to (required only when owner_type is 'person')"
+    )
     club_id: Optional[str] = Field(None, description="Optional club/meeting during which commitment was made")
     subthread_id: Optional[str] = Field(None, description="Linked subthread/capture ID")
     description: str = Field(..., max_length=500)
+    owner_type: Optional[CommitmentOwnerType] = Field(
+        None, description="Who owns the commitment: 'me' (the user) or a 'person'. Defaults to 'me'."
+    )
     deadline: Optional[datetime] = Field(None, description="Proper deadline for this commitment")
 
     # Compatibility alias for due_date
@@ -281,6 +287,7 @@ class CommitmentCreate(_Base):
 class CommitmentUpdate(_Base):
     description: Optional[str] = Field(None, max_length=500)
     person_id: Optional[str] = None
+    owner_type: Optional[CommitmentOwnerType] = None
     deadline: Optional[datetime] = None
     status: Optional[CommitmentStatus] = None
 
@@ -297,6 +304,7 @@ class CommitmentResponse(_Base):
     club_id: Optional[str] = None
     subthread_id: Optional[str] = None
     description: str
+    owner_type: CommitmentOwnerType
     status: CommitmentStatus
     deadline: Optional[datetime] = Field(None, alias="deadline")
     due_date: Optional[datetime] = Field(None, alias="deadline")

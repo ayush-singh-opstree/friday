@@ -71,6 +71,12 @@ class CommitmentStatus(str, enum.Enum):
     completed = "completed"
 
 
+class CommitmentOwnerType(str, enum.Enum):
+    """Who owns/owes the commitment: 'me' (the user) or a tracked 'person'."""
+    me = "me"
+    person = "person"
+
+
 class TimelineEventType(str, enum.Enum):
     club_started = "club_started"
     club_ended = "club_ended"
@@ -264,8 +270,9 @@ class SubThread(Base):
     person = relationship("Person")
 
 
-# Alias for backward compatibility if any legacy code imports Capture
+# Aliases for backward compatibility if any legacy code imports Capture / CaptureType
 Capture = SubThread
+CaptureType = SubThreadType
 
 
 class Commitment(Base):
@@ -280,6 +287,7 @@ class Commitment(Base):
     person_id = Column("owner_person_id", String(36), ForeignKey("people.id", ondelete="SET NULL"), nullable=True)
     club_id = Column(String(36), ForeignKey("clubs.id", ondelete="SET NULL"), nullable=True)
     subthread_id = Column("capture_id", String(36), ForeignKey("captures.id", ondelete="SET NULL"), nullable=True)
+    owner_type = Column(SAEnum(CommitmentOwnerType), nullable=False, default=CommitmentOwnerType.me)
     description = Column(String(500), nullable=False)
     status = Column(SAEnum(CommitmentStatus), nullable=False, default=CommitmentStatus.open)
     deadline = Column("due_date", DateTime, nullable=True)

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Commitment,
+    CommitmentOwnerType,
     CommitmentStatus,
     TimelineEvent,
     TimelineEventType,
@@ -116,13 +117,15 @@ class CommitmentService:
                 detail=f"Thread '{data.thread_id}' not found.",
             )
 
-        # Validate linked person
-        person = people_repository.get_by_id(db, data.person_id, user_id)
-        if not person:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Person '{data.person_id}' not found.",
-            )
+        # Validate the linked person. A commitment owned by "me" has no person.
+        person = None
+        if data.person_id:
+            person = people_repository.get_by_id(db, data.person_id, user_id)
+            if not person:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Person '{data.person_id}' not found.",
+                )
 
         # Validate club if provided
         if data.club_id:
@@ -137,6 +140,10 @@ class CommitmentService:
         if deadline and deadline.tzinfo is not None:
             deadline = deadline.astimezone(timezone.utc).replace(tzinfo=None)
 
+        owner_type = data.owner_type or (
+            CommitmentOwnerType.person if data.person_id else CommitmentOwnerType.me
+        )
+
         commitment = Commitment(
             id=str(uuid.uuid4()),
             user_id=user_id,
@@ -145,6 +152,7 @@ class CommitmentService:
             club_id=data.club_id,
             subthread_id=data.subthread_id,
             description=data.description.strip(),
+            owner_type=owner_type,
             status=CommitmentStatus.open,
             deadline=deadline,
             completed_at=None,
@@ -161,8 +169,9 @@ class CommitmentService:
             reference_id=commitment.id,
             metadata={
                 "description": commitment.description,
-                "person_id": person.id,
-                "person_name": person.full_name,
+                "owner_type": commitment.owner_type.value,
+                "person_id": person.id if person else None,
+                "person_name": person.full_name if person else None,
                 "deadline": commitment.deadline.isoformat() if commitment.deadline else None,
             },
         )

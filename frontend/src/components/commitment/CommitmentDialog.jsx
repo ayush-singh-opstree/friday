@@ -77,7 +77,8 @@ function CommitmentForm({
   }, [hasProvidedPeople, peopleStatus, fetchPeople])
 
   const [description, setDescription] = useState(commitment?.description ?? '')
-  const [personId, setPersonId] = useState(commitment?.ownerPersonId ?? '')
+  const [ownerType, setOwnerType] = useState(commitment?.ownerType ?? 'me')
+  const [ownerPersonId, setOwnerPersonId] = useState(commitment?.ownerPersonId ?? '')
   const [dueDate, setDueDate] = useState(() => toDate(commitment?.dueDate))
   const [targetThreadId, setTargetThreadId] = useState(commitment?.threadId ?? threadId ?? '')
   const [error, setError] = useState(null)
@@ -93,7 +94,11 @@ function CommitmentForm({
       })),
   ]
 
-  // Commitments are always tied to a person (no Me/Someone-else toggle).
+  // A commitment is either my own promise ("Me") or someone else's.
+  const ownerOptions = [
+    { value: 'me', label: 'Me' },
+    { value: 'person', label: 'Someone else' },
+  ]
 
   const peopleOptions = [
     { value: '', label: 'Select a person…' },
@@ -104,9 +109,9 @@ function CommitmentForm({
   ]
 
   // Keep an already-assigned person selectable even if it isn't in the list.
-  if (personId && !peopleOptions.some((option) => option.value === personId)) {
+  if (ownerPersonId && !peopleOptions.some((option) => option.value === ownerPersonId)) {
     peopleOptions.unshift({
-      value: personId,
+      value: ownerPersonId,
       label: commitment?.ownerPerson?.fullName ?? 'Selected person',
     })
   }
@@ -121,7 +126,7 @@ function CommitmentForm({
       setError('Pick the thread this commitment belongs to.')
       return
     }
-    if (!personId) {
+    if (ownerType === 'person' && !ownerPersonId) {
       setError('Select the person this commitment is with.')
       return
     }
@@ -129,7 +134,8 @@ function CommitmentForm({
     const payload = {
       description: description.trim(),
       threadId: targetThreadId,
-      personId,
+      ownerType,
+      ownerPersonId: ownerType === 'person' ? ownerPersonId || null : null,
       dueDate: dueDate ? endOfDayIso(dueDate) : null,
     }
 
@@ -171,21 +177,27 @@ function CommitmentForm({
         />
       </Field>
 
-      <Field
-        label="Person"
-        hint={
-          !loadingPeople && directoryPeople.length === 0
-            ? 'No people in your directory yet — add someone from the People page.'
-            : 'Whom is this commitment with? Every commitment is tied to a person.'
-        }
-      >
-        <SelectMenu
-          value={personId}
-          onChange={setPersonId}
-          options={peopleOptions}
-          placeholder={loadingPeople ? 'Loading people...' : 'Select a person...'}
-        />
+      <Field label="Owner" hint="Is this your promise, or someone else's?">
+        <SelectMenu value={ownerType} onChange={setOwnerType} options={ownerOptions} />
       </Field>
+
+      {ownerType === 'person' ? (
+        <Field
+          label="Person"
+          hint={
+            !loadingPeople && directoryPeople.length === 0
+              ? 'No people in your directory yet — add someone from the People page.'
+              : 'Whom is this commitment with?'
+          }
+        >
+          <SelectMenu
+            value={ownerPersonId}
+            onChange={setOwnerPersonId}
+            options={peopleOptions}
+            placeholder={loadingPeople ? 'Loading people...' : 'Select a person...'}
+          />
+        </Field>
+      ) : null}
 
       <Field label="Due date" htmlFor="commitment-due">
         <DatePicker

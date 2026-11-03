@@ -429,6 +429,7 @@ export function toCommitmentUpdatePayload(patch = {}) {
     description: 'description',
     personId: 'person_id',
     ownerPersonId: 'person_id',
+    ownerType: 'owner_type',
     deadline: 'deadline',
     dueDate: 'deadline',
     status: 'status',
