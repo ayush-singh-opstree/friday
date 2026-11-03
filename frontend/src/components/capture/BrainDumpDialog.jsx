@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, Brain, Check, Lightning, Sparkle, Trash } from '@/components/icons'
 import { inferCaptureType, stripCommand } from '@/lib/patterns'
 import { useCaptureStore, useThreadStore, useUiStore } from '@/store'
@@ -34,8 +34,13 @@ export function BrainDumpDialog({ open, onOpenChange }) {
 
 function BrainDumpContent({ onOpenChange }) {
   const threads = useThreadStore((state) => state.threads)
+  const fetchThreads = useThreadStore((state) => state.fetchThreads)
   const createCapture = useCaptureStore((state) => state.createCapture)
   const pushToast = useUiStore((state) => state.pushToast)
+
+  useEffect(() => {
+    fetchThreads().catch(() => {})
+  }, [fetchThreads])
 
   const [step, setStep] = useState('dump')
   const [mode, setMode] = useState(() => {
@@ -105,69 +110,62 @@ function BrainDumpContent({ onOpenChange }) {
       return
     }
 
-    // AI Smart Triage (Gemini / AI backend)
+    // AI Smart Triage (Single batch call to Gemini / AI backend)
     setAnalyzing(true)
     try {
-      const parsedEntries = await Promise.all(
-        lines.map(async (line) => {
-          const cleaned = stripCommand(line)
-          const localType = inferCaptureType(line)
-          const localThreadId = suggestThreadId(line)
+      const cleanedLines = lines.map((line) => stripCommand(line))
+      let aiResults = []
+      try {
+        aiResults = await aiApi.classify(cleanedLines)
+      } catch (err) {
+        console.warn('Batch AI classification failed, using local fallback:', err)
+      }
 
-          try {
-            const aiRes = await aiApi.classify(cleaned)
+      const parsedEntries = lines.map((line, idx) => {
+        const cleaned = cleanedLines[idx]
+        const localType = inferCaptureType(line)
+        const localThreadId = suggestThreadId(line)
+        const aiRes = Array.isArray(aiResults) ? aiResults[idx] : null
 
-            // Check if backend returned the static fallback stub (caused when Gemini hits quota 429 or is offline)
-            const isFallbackStub =
-              aiRes?.confidence === 0.75 &&
-              aiRes?.reasoning === 'General observation or meeting context.' &&
-              aiRes?.suggestedType === 'note'
+        const isFallback =
+          !aiRes ||
+          aiRes.source === 'fallback' ||
+          (aiRes?.confidence === 0.75 &&
+            aiRes?.reasoning === 'General observation or meeting context.' &&
+            aiRes?.suggestedType === 'note')
 
-            if (isFallbackStub) {
-              // The backend's Gemini API was rate-limited or offline and defaulted to a generic 75% note.
-              // Apply smart local pattern detection so we correctly identify actions, decisions, and questions.
-              const finalType = localType !== 'note' ? localType : 'note'
-              const finalThreadId = aiRes?.suggestedThreadId ?? localThreadId
-              return {
-                id: uid('dump'),
-                content: cleaned,
-                type: finalType,
-                threadId: finalThreadId,
-                confidence: finalType !== 'note' ? 0.88 : 0.75,
-                reasoning:
-                  finalType !== 'note'
-                    ? `Smart Pattern: Detected ${finalType} intent (Gemini Quota Exceeded)`
-                    : 'General observation or note (Gemini Quota Exceeded)',
-                sourceMode: 'fallback',
-                include: true,
-              }
-            }
-
-            // Real AI response was received from Gemini!
-            return {
-              id: uid('dump'),
-              content: cleaned,
-              type: aiRes?.suggestedType || localType,
-              threadId: aiRes?.suggestedThreadId ?? localThreadId,
-              confidence: aiRes?.confidence ?? null,
-              reasoning: aiRes?.reasoning || 'Classified by Gemini AI',
-              sourceMode: 'ai',
-              include: true,
-            }
-          } catch {
-            return {
-              id: uid('dump'),
-              content: cleaned,
-              type: localType,
-              threadId: localThreadId,
-              confidence: 0.85,
-              reasoning: `Smart Rule: ${localType.toUpperCase()}`,
-              sourceMode: 'fallback',
-              include: true,
-            }
+        if (isFallback) {
+          // The backend's Gemini API was rate-limited or offline and defaulted to intelligent heuristic classification.
+          const finalType = aiRes?.suggestedType || (localType !== 'note' ? localType : 'note')
+          const finalThreadId = aiRes?.suggestedThreadId ?? localThreadId
+          return {
+            id: uid('dump'),
+            content: cleaned,
+            type: finalType,
+            threadId: finalThreadId,
+            confidence: aiRes?.confidence ?? (finalType !== 'note' ? 0.88 : 0.75),
+            reasoning:
+              aiRes?.reasoning ||
+              (finalType !== 'note'
+                ? `Smart Pattern: Detected ${finalType} intent (AI Quota Fallback)`
+                : 'General observation or note (AI Quota Fallback)'),
+            sourceMode: 'fallback',
+            include: true,
           }
-        }),
-      )
+        }
+
+        // Real AI response was received from Gemini!
+        return {
+          id: uid('dump'),
+          content: cleaned,
+          type: aiRes?.suggestedType || localType,
+          threadId: aiRes?.suggestedThreadId ?? localThreadId,
+          confidence: aiRes?.confidence ?? 0.85,
+          reasoning: aiRes?.reasoning || 'Classified by Gemini AI',
+          sourceMode: 'ai',
+          include: true,
+        }
+      })
 
       setEntries(parsedEntries)
       setStep('review')

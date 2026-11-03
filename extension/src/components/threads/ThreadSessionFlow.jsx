@@ -859,7 +859,6 @@ export function ThreadSessionFlow({ onOpenCompanion }) {
     }
 
     // eslint-disable-next-line react-hooks/purity
-
     const now = Date.now()
 
     sessionStartTimeRef.current = now

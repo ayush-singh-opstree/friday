@@ -31,6 +31,13 @@ function QuickCaptureForm({ initialThreadId }) {
   const createCapture = useCaptureStore((state) => state.createCapture)
   const saving = useCaptureStore((state) => state.saving)
   const threads = useThreadStore((state) => state.threads)
+  const fetchThreads = useThreadStore((state) => state.fetchThreads)
+
+  useEffect(() => {
+    if (threads.length === 0) {
+      fetchThreads().catch(() => {})
+    }
+  }, [threads.length, fetchThreads])
 
   const [content, setContent] = useState('')
   const [type, setType] = useState('note')

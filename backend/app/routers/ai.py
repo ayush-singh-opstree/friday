@@ -68,8 +68,8 @@ def generate_brief(
 
 @router.post(
     "/classify",
-    response_model=AIClassifyResponse,
-    summary="Classify capture content",
+    response_model=list[AIClassifyResponse],
+    summary="Batch classify capture content lines",
 )
 def classify_capture(
     data: AIClassifyRequest,
@@ -77,8 +77,15 @@ def classify_capture(
     user_id: str = Depends(get_current_user_id),
 ):
     """
-    Classify unstructured text into a capture type (note, action, decision, question)
-    and detect suggested thread association.
+    Classify unstructured text lines into capture types (note, follow_up, question, commitment, decision)
+    and detect suggested thread association in a single batch call.
+    Returns a JSON array of classifications.
     """
-    return ai_service.classify_capture(db, user_id, data.content)
+    if data.lines is not None:
+        lines = [line.strip() for line in data.lines if line and line.strip()]
+    elif data.content:
+        lines = [data.content.strip()] if data.content.strip() else []
+    else:
+        lines = []
+    return ai_service.classify_batch(db, user_id, lines)
 

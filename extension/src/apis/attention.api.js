@@ -65,17 +65,26 @@ export const aiApi = {
     return { summary: toSummary(res?.brief) }
   },
 
-  /** @param {string[]} lines Brain Dump entries to classify per thread. */
-  classify: async (lines) => {
-    if (env.useMockApi) return http.post(ENDPOINTS.ai.classify(), { lines })
-    const content = Array.isArray(lines) ? lines.join('\n') : String(lines ?? '')
-    const res = await http.post(ENDPOINTS.ai.classify(), { content })
-    return {
-      suggestedType: res?.suggested_type ?? 'note',
-      suggestedThreadId: res?.suggested_thread_id ?? null,
-      confidence: res?.confidence ?? 0,
-      reasoning: res?.reasoning ?? '',
-    }
+  /** Classify one or more lines into capture types and thread predictions in a single batch call. */
+  classify: async (input) => {
+    const isArray = Array.isArray(input)
+    const lines = isArray ? input : [String(input ?? '').trim()]
+    if (lines.length === 0) return isArray ? [] : null
+
+    const payload = { lines }
+    const res = await http.post(ENDPOINTS.ai.classify(), payload)
+
+    const normalizeItem = (item) => ({
+      line: item?.line,
+      suggestedType: item?.suggested_type ?? item?.suggestedType ?? 'note',
+      suggestedThreadId: item?.suggested_thread_id ?? item?.suggestedThreadId ?? null,
+      confidence: typeof item?.confidence === 'number' ? item.confidence : 0.75,
+      reasoning: item?.reasoning ?? '',
+      source: item?.source ?? (item?.reasoning?.includes('Gemini') ? 'ai' : 'fallback'),
+    })
+
+    const items = Array.isArray(res) ? res.map(normalizeItem) : [normalizeItem(res)]
+    return isArray ? items : items[0]
   },
 }
 

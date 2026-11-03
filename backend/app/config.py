@@ -8,7 +8,11 @@ at module import time.
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+_backend_env = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+if os.path.exists(_backend_env):
+    load_dotenv(dotenv_path=_backend_env)
+else:
+    load_dotenv()
 
 # ── Database ──────────────────────────────────────────────────────────────────
 DB_HOST: str = os.getenv("DB_HOST", "localhost")

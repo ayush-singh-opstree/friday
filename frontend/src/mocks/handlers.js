@@ -825,48 +825,63 @@ route('POST', /^\/ai\/brief\/([^/]+)$/, async ({ params }) => {
 route('POST', /^\/ai\/classify$/, async ({ body }) => {
   requireUser()
   const db = getDb()
-  const raw = body?.content ?? body?.lines ?? ''
-  const content = Array.isArray(raw) ? raw.join('\n') : String(raw)
-  const lower = content.toLowerCase()
+  const rawLines = Array.isArray(body?.lines)
+    ? body.lines
+    : Array.isArray(body?.content)
+    ? body.content
+    : body?.content
+    ? [body.content]
+    : body?.lines
+    ? [body.lines]
+    : []
 
-  let suggestedType = 'note'
-  let confidence = 0.75
-  let reasoning = 'General observation or meeting context.'
+  const classifyLine = (line) => {
+    const content = String(line ?? '')
+    const lower = content.toLowerCase()
 
-  if (
-    ['will do', 'promised to', 'follow up', 'send over', 'by tomorrow', 'deadline'].some((word) =>
-      lower.includes(word),
+    let suggestedType = 'note'
+    let confidence = 0.75
+    let reasoning = 'General observation or meeting context.'
+
+    if (
+      ['will do', 'promised to', 'follow up', 'send over', 'by tomorrow', 'deadline'].some((word) =>
+        lower.includes(word),
+      )
+    ) {
+      suggestedType = 'commitment'
+      confidence = 0.9
+      reasoning = 'Contains commitment/promise keywords.'
+    } else if (['decided', 'agreed that', 'decision', 'selected'].some((word) => lower.includes(word))) {
+      suggestedType = 'decision'
+      confidence = 0.88
+      reasoning = 'Contains decision terms.'
+    } else if (
+      content.trim().endsWith('?') ||
+      ['wonder if', 'ask whether', 'check if'].some((word) => lower.includes(word))
+    ) {
+      suggestedType = 'question'
+      confidence = 0.85
+      reasoning = 'Question or clarification format.'
+    }
+
+    const matchedThread = db.threads.find(
+      (thread) =>
+        thread.status === 'active' &&
+        thread.title &&
+        lower.includes(thread.title.toLowerCase()),
     )
-  ) {
-    suggestedType = 'commitment'
-    confidence = 0.9
-    reasoning = 'Contains commitment/promise keywords.'
-  } else if (['decided', 'agreed that', 'decision', 'selected'].some((word) => lower.includes(word))) {
-    suggestedType = 'decision'
-    confidence = 0.88
-    reasoning = 'Contains decision terms.'
-  } else if (
-    content.trim().endsWith('?') ||
-    ['wonder if', 'ask whether', 'check if'].some((word) => lower.includes(word))
-  ) {
-    suggestedType = 'question'
-    confidence = 0.85
-    reasoning = 'Question or clarification format.'
+
+    return {
+      line: content,
+      suggestedType,
+      suggestedThreadId: matchedThread?.id ?? null,
+      confidence,
+      reasoning,
+      source: 'ai',
+    }
   }
 
-  const matchedThread = db.threads.find(
-    (thread) =>
-      thread.status === 'active' &&
-      thread.title &&
-      lower.includes(thread.title.toLowerCase()),
-  )
-
-  return {
-    suggestedType,
-    suggestedThreadId: matchedThread?.id ?? null,
-    confidence,
-    reasoning,
-  }
+  return rawLines.map(classifyLine)
 })
 
 

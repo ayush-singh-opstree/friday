@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/Button'
 import { EmptyState, Skeleton, ThreadCardSkeleton } from '@/components/ui/Feedback'
 import { useAttention, useCommitments } from '@/hooks/useData'
 import { greetingFor, longDate } from '@/lib/date'
-import { useUiStore } from '@/store'
+import { useThreadStore, useUiStore } from '@/store'
 import { cn } from '@/lib/utils'
 
 /**
@@ -37,6 +37,15 @@ export function TodayPage() {
   const openInbox = useUiStore((state) => state.openInbox)
   const pushToast = useUiStore((state) => state.pushToast)
   const [dumpOpen, setDumpOpen] = useState(false)
+
+  const fetchThreads = useThreadStore((state) => state.fetchThreads)
+  const threads = useThreadStore((state) => state.threads)
+
+  useEffect(() => {
+    if (threads.length === 0) {
+      fetchThreads().catch(() => {})
+    }
+  }, [threads.length, fetchThreads])
 
   const handleComplete = async (commitment) => {
     await complete(commitment.id)

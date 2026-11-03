@@ -4,7 +4,7 @@ services/ai_service.py — AI Intelligence Service for Threadwise with Gemini AP
 import json
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 from fastapi import HTTPException, status
@@ -44,12 +44,15 @@ class AIService:
             )
         return thread
 
-    def _call_gemini(self, system_instruction: str, user_prompt: str) -> Optional[dict]:
+    def _call_gemini(self, system_instruction: str, user_prompt: str) -> Optional[Any]:
         if not GEMINI_API_KEY:
             return None
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
-        
+        models_to_try = [GEMINI_MODEL]
+        for fallback_m in ["gemini-flash-lite-latest", "gemini-3.5-flash-lite"]:
+            if fallback_m not in models_to_try:
+                models_to_try.append(fallback_m)
+
         payload = {
             "contents": [
                 {
@@ -64,21 +67,26 @@ class AIService:
             },
         }
 
-        try:
-            with httpx.Client(timeout=30.0) as client:
-                response = client.post(url, json=payload)
-                if response.status_code == 200:
-                    data = response.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts:
-                            raw_text = parts[0].get("text", "{}")
-                            return json.loads(raw_text)
-                else:
-                    print(f"⚠️ Gemini API error {response.status_code}: {response.text}")
-        except Exception as exc:
-            print(f"⚠️ Gemini API request failed: {exc}")
+        for model in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+            try:
+                with httpx.Client(timeout=30.0) as client:
+                    response = client.post(url, json=payload)
+                    if response.status_code == 200:
+                        data = response.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts:
+                                raw_text = parts[0].get("text", "{}")
+                                return json.loads(raw_text)
+                    elif response.status_code in (404, 429, 503):
+                        print(f"[Gemini API] model {model} returned {response.status_code}, trying next fallback model...")
+                        continue
+                    else:
+                        print(f"[Gemini API] error {response.status_code}: {response.text}")
+            except Exception as exc:
+                print(f"[Gemini API] request to {model} failed: {exc}")
 
         return None
 
@@ -266,56 +274,23 @@ class AIService:
 
         return AIBriefResponse(brief=SummaryResponse.model_validate(summary_rec))
 
-    def classify_capture(
-        self, db: Session, user_id: str, content: str
+    def _fallback_classify_line(
+        self, content: str, threads: list
     ) -> AIClassifyResponse:
-        threads = thread_repository.get_active_for_attention(db, user_id)
-        threads_summary = [{"id": t.id, "agenda": t.agenda} for t in threads]
-
-        if GEMINI_API_KEY:
-            sys_prompt = (
-                "You are an intelligent classification agent for meeting captures and subthreads. "
-                "Allowed types: 'note', 'follow_up', 'question', 'commitment', 'decision'.\n"
-                "Return strict JSON matching:\n"
-                "{\n"
-                '  "suggested_type": "note" | "follow_up" | "question" | "commitment" | "decision",\n'
-                '  "suggested_thread_id": string or null,\n'
-                '  "confidence": float between 0.0 and 1.0,\n'
-                '  "reasoning": "brief explanation"\n'
-                "}"
-            )
-            user_prompt = (
-                f"Capture Content: {content}\n\n"
-                f"Available User Threads:\n{json.dumps(threads_summary, indent=2)}"
-            )
-            llm_res = self._call_gemini(sys_prompt, user_prompt)
-            if llm_res and "suggested_type" in llm_res:
-                raw_type = str(llm_res.get("suggested_type", "note")).lower()
-                valid_types = {t.value: t for t in SubThreadType}
-                final_type = valid_types.get(raw_type, SubThreadType.note)
-
-                return AIClassifyResponse(
-                    suggested_type=final_type,
-                    suggested_thread_id=llm_res.get("suggested_thread_id"),
-                    confidence=float(llm_res.get("confidence", 0.85)),
-                    reasoning=str(llm_res.get("reasoning", "Classified by Gemini")),
-                )
-
-        # Fallback heuristic classifier
         content_lower = content.lower()
-        if any(w in content_lower for w in ["promised", "will deliver", "committed", "commit to", "by next week", "deadline"]):
+        if any(w in content_lower for w in ["promised", "will deliver", "committed", "commit to", "by next week", "deadline", "i will", "we will"]):
             suggested_type = SubThreadType.commitment
             confidence = 0.90
             reasoning = "Contains commitment or delivery promise."
-        elif any(w in content_lower for w in ["follow up", "check back", "ping", "reach out"]):
+        elif any(w in content_lower for w in ["follow up", "check back", "ping", "reach out", "send to", "todo"]):
             suggested_type = SubThreadType.follow_up
             confidence = 0.88
             reasoning = "Contains follow-up action."
-        elif any(w in content_lower for w in ["decided", "agreed that", "decision", "selected"]):
+        elif any(w in content_lower for w in ["decided", "agreed that", "decision", "selected", "chose", "approved"]):
             suggested_type = SubThreadType.decision
             confidence = 0.88
             reasoning = "Contains decision terms."
-        elif content.strip().endswith("?") or any(w in content_lower for w in ["wonder if", "ask whether", "check if"]):
+        elif content.strip().endswith("?") or any(w in content_lower for w in ["wonder if", "ask whether", "check if", "why", "how"]):
             suggested_type = SubThreadType.question
             confidence = 0.85
             reasoning = "Question or clarification format."
@@ -326,16 +301,114 @@ class AIService:
 
         suggested_thread_id = None
         for t in threads:
-            if t.agenda.lower() in content_lower:
+            agenda = getattr(t, "agenda", None)
+            if agenda and agenda.lower() in content_lower:
                 suggested_thread_id = t.id
                 break
 
         return AIClassifyResponse(
+            line=content,
             suggested_type=suggested_type,
             suggested_thread_id=suggested_thread_id,
             confidence=confidence,
             reasoning=reasoning,
+            source="fallback",
         )
+
+    def classify_batch(
+        self, db: Session, user_id: str, lines: list[str]
+    ) -> list[AIClassifyResponse]:
+        if not lines:
+            return []
+
+        threads = thread_repository.get_active_for_attention(db, user_id)
+        threads_summary = [
+            {"id": t.id, "title": t.agenda, "description": t.description or ""}
+            for t in threads
+        ]
+        valid_thread_ids = {t.id for t in threads}
+        valid_types = {t.value: t for t in SubThreadType}
+
+        if GEMINI_API_KEY:
+            sys_prompt = (
+                "You are an intelligent classification agent for meeting captures and notes.\n"
+                "You will receive an array of input lines to classify independently and match to the user's available threads.\n"
+                "Allowed types: 'note', 'follow_up', 'question', 'commitment', 'decision'.\n"
+                "For 'suggested_thread_id': match the input line against the 'Available User Threads' list. If the line clearly pertains to one of the user's threads, return that exact thread 'id'. If the line does not clearly belong to any existing thread, return null (it will default to Inbox).\n"
+                "Return a strict JSON array where each element corresponds to one input line in the exact same order.\n"
+                "CRITICAL: You MUST return an entry for EVERY input line. The output array MUST have the exact same length as the input lines array.\n"
+                "[\n"
+                "  {\n"
+                '    "index": 0,\n'
+                '    "suggested_type": "commitment",\n'
+                '    "suggested_thread_id": "thread-id-from-list" or null,\n'
+                '    "confidence": 0.95,\n'
+                '    "reasoning": "brief explanation"\n'
+                "  }\n"
+                "]"
+            )
+            indexed_lines = [{"index": idx, "content": line} for idx, line in enumerate(lines)]
+            user_prompt = (
+                f"Input lines to classify (total {len(lines)} lines):\n{json.dumps(indexed_lines, indent=2)}\n\n"
+                f"Available User Threads:\n{json.dumps(threads_summary, indent=2)}"
+            )
+
+            llm_res = self._call_gemini(sys_prompt, user_prompt)
+            items_list = None
+            if isinstance(llm_res, list):
+                items_list = llm_res
+            elif isinstance(llm_res, dict):
+                for k in ["results", "items", "classifications", "data", "lines"]:
+                    if isinstance(llm_res.get(k), list):
+                        items_list = llm_res[k]
+                        break
+                if items_list is None and any(str(i) in llm_res for i in range(len(lines))):
+                    items_list = [llm_res.get(str(i)) or llm_res.get(i) for i in range(len(lines))]
+                elif items_list is None and "suggested_type" in llm_res:
+                    items_list = [llm_res]
+
+            if items_list and len(items_list) > 0:
+                llm_by_idx = {}
+                for idx, item in enumerate(items_list):
+                    if isinstance(item, dict):
+                        item_idx = item.get("index", idx)
+                        llm_by_idx[item_idx] = item
+
+                results = []
+                for idx, line in enumerate(lines):
+                    item = llm_by_idx.get(idx) or (items_list[idx] if idx < len(items_list) else None)
+                    if item and "suggested_type" in item:
+                        raw_type = str(item.get("suggested_type", "note")).lower()
+                        final_type = valid_types.get(raw_type, SubThreadType.note)
+                        raw_thread = item.get("suggested_thread_id")
+                        final_thread_id = (
+                            str(raw_thread)
+                            if raw_thread and str(raw_thread) in valid_thread_ids
+                            else None
+                        )
+                        results.append(
+                            AIClassifyResponse(
+                                line=line,
+                                suggested_type=final_type,
+                                suggested_thread_id=final_thread_id,
+                                confidence=float(item.get("confidence", 0.85)),
+                                reasoning=str(item.get("reasoning", "Classified by Gemini")),
+                                source="ai",
+                            )
+                        )
+                    else:
+                        results.append(self._fallback_classify_line(line, threads))
+
+                return results
+
+        # Fallback heuristic classifier for all lines
+        return [self._fallback_classify_line(line, threads) for line in lines]
+
+    def classify_capture(
+        self, db: Session, user_id: str, content: str
+    ) -> AIClassifyResponse:
+        results = self.classify_batch(db, user_id, [content])
+        return results[0] if results else self._fallback_classify_line(content, [])
 
 
 ai_service = AIService()

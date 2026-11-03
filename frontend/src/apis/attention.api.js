@@ -76,16 +76,26 @@ export const aiApi = {
     // The UI's BriefTab reads `data.summary` for both summary kinds.
     return { summary: toSummary(res?.brief) }
   },
-  /** Classify free-form Brain Dump lines into thread assignments. */
-  classify: async (lines) => {
-    const payload = env.useMockApi ? { lines } : { content: Array.isArray(lines) ? lines.join('\n') : String(lines ?? '') }
+  /** Classify one or more lines into capture types and thread predictions in a single batch call. */
+  classify: async (input) => {
+    const isArray = Array.isArray(input)
+    const lines = isArray ? input : [String(input ?? '').trim()]
+    if (lines.length === 0) return isArray ? [] : null
+
+    const payload = { lines }
     const res = await http.post(ENDPOINTS.ai.classify(), payload)
-    return {
-      suggestedType: res?.suggestedType ?? res?.suggested_type ?? 'note',
-      suggestedThreadId: res?.suggestedThreadId ?? res?.suggested_thread_id ?? null,
-      confidence: res?.confidence ?? 0,
-      reasoning: res?.reasoning ?? '',
-    }
+
+    const normalizeItem = (item) => ({
+      line: item?.line,
+      suggestedType: item?.suggested_type ?? item?.suggestedType ?? 'note',
+      suggestedThreadId: item?.suggested_thread_id ?? item?.suggestedThreadId ?? null,
+      confidence: typeof item?.confidence === 'number' ? item.confidence : 0.75,
+      reasoning: item?.reasoning ?? '',
+      source: item?.source ?? (item?.reasoning?.includes('Gemini') ? 'ai' : 'fallback'),
+    })
+
+    const items = Array.isArray(res) ? res.map(normalizeItem) : [normalizeItem(res)]
+    return isArray ? items : items[0]
   },
   draftFollowUp: (threadId) => http.post(ENDPOINTS.ai.brief(threadId)),
 }

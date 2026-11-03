@@ -449,11 +449,14 @@ class AIBriefResponse(_Base):
 
 
 class AIClassifyRequest(_Base):
-    content: str = Field(..., max_length=2000)
+    content: Optional[str] = Field(None, max_length=10000)
+    lines: Optional[list[str]] = None
 
 
 class AIClassifyResponse(_Base):
+    line: Optional[str] = None
     suggested_type: SubThreadType
     suggested_thread_id: Optional[str] = None
     confidence: float
     reasoning: str
+    source: str = "ai"
